@@ -218,7 +218,7 @@ async def run_autonomous_editorial_pipeline(
 
     return {
         "ok": True,
-        "status": "published" if (blog_dispatch and blog_dispatch.get("ok")) else "awaiting_approval",
+        "status": "published" if auto_eligible else "awaiting_approval",
         "stage": initial_stage,
         "publishing_mode": mode,
         "auto_publish_eligible": auto_eligible,
