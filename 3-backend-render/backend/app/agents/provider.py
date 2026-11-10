@@ -19,21 +19,35 @@ import httpx
 logger = logging.getLogger("nexus_media_ai.agents.provider")
 
 SUPPORTED_PROVIDERS = {
+    "deepseek": {
+        "env_keys": ("DEEPSEEK_API_KEY", "AI_PROVIDER_API_KEY", "DAHL_API_KEY"),
+        "default_model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "default_base_url": "https://inference.dahl.global/v1",
+    },
+    "dahl": {
+        "env_keys": ("DAHL_API_KEY", "AI_PROVIDER_API_KEY", "DEEPSEEK_API_KEY"),
+        "default_model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "default_base_url": "https://inference.dahl.global/v1",
+    },
     "gemini": {
         "env_keys": ("AI_PROVIDER_API_KEY", "GEMINI_API_KEY"),
         "default_model": "gemini-2.5-flash",
+        "default_base_url": None,
     },
     "openai": {
         "env_keys": ("OPENAI_API_KEY", "AI_PROVIDER_API_KEY"),
         "default_model": "gpt-4o",
+        "default_base_url": "https://api.openai.com/v1",
     },
     "anthropic": {
         "env_keys": ("ANTHROPIC_API_KEY", "AI_PROVIDER_API_KEY"),
         "default_model": "claude-3-7-sonnet-latest",
+        "default_base_url": None,
     },
     "mock": {
         "env_keys": (),
         "default_model": "mock-deterministic-v1",
+        "default_base_url": None,
     },
 }
 
@@ -120,33 +134,86 @@ class AIProviderAdapter:
         temperature: Optional[float] = None,
     ) -> str:
         """
-        Generates text using live Gemini API if configured, otherwise falls back
-        to deterministic mock generation.
+        Generates text using live DeepSeek/Dahl/OpenAI/Gemini API if configured,
+        otherwise falls back to deterministic mock generation.
         """
         status = self.get_status()
         api_key = self._get_active_api_key()
 
-        if status.is_connected and not status.is_mock and api_key and self.provider_name == "gemini":
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={api_key}"
-                body: Dict[str, Any] = {
-                    "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": temperature if temperature is not None else 0.2},
-                }
-                if system_instructions:
-                    body["systemInstruction"] = {"parts": [{"text": system_instructions}]}
+        if status.is_connected and not status.is_mock and api_key:
+            # 1. DeepSeek, Dahl, and OpenAI-compatible providers
+            if self.provider_name in ("deepseek", "dahl", "openai"):
+                provider_meta = SUPPORTED_PROVIDERS.get(self.provider_name, {})
+                base_url = (
+                    self._env.get("AI_PROVIDER_BASE_URL")
+                    or provider_meta.get("default_base_url")
+                    or "https://inference.dahl.global/v1"
+                ).rstrip("/")
+                endpoint = f"{base_url}/chat/completions"
 
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    resp = await client.post(url, json=body)
-                    resp.raise_for_status()
-                    data = resp.json()
-                    candidates = data.get("candidates") or []
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts and "text" in parts[0]:
-                            return str(parts[0]["text"]).strip()
-            except Exception as exc:
-                logger.warning("Gemini API call failed (%s); falling back to deterministic generation.", exc)
+                messages = []
+                if system_instructions:
+                    messages.append({"role": "system", "content": system_instructions})
+                messages.append({"role": "user", "content": prompt})
+
+                models_to_try = [self.model_name]
+                if "dahl.global" in base_url:
+                    for backup in ["deepseek-ai/DeepSeek-V4-Flash-0731", "zai-org/GLM-5.3-Flash", "MiniMaxAI/MiniMax-M2.7"]:
+                        if backup not in models_to_try:
+                            models_to_try.append(backup)
+
+                for model in models_to_try:
+                    payload = {
+                        "model": model,
+                        "messages": messages,
+                        "temperature": temperature if temperature is not None else 0.3,
+                    }
+                    headers = {
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    }
+                    try:
+                        async with httpx.AsyncClient(timeout=45.0) as client:
+                            resp = await client.post(endpoint, json=payload, headers=headers)
+                            if resp.status_code == 200:
+                                data = resp.json()
+                                choices = data.get("choices") or []
+                                if choices:
+                                    msg = str(choices[0].get("message", {}).get("content", ""))
+                                    cleaned = re.sub(r"<think>.*?</think>", "", msg, flags=re.DOTALL).strip()
+                                    if cleaned:
+                                        return cleaned
+                            elif resp.status_code == 429:
+                                logger.warning("Model %s hit concurrency limit (429); checking fallback...", model)
+                                continue
+                            else:
+                                logger.warning("Model %s returned status %d", model, resp.status_code)
+                    except Exception as exc:
+                        logger.warning("API call to %s failed: %s", model, exc)
+                        continue
+
+            # 2. Google Gemini provider
+            elif self.provider_name == "gemini":
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={api_key}"
+                    body: Dict[str, Any] = {
+                        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                        "generationConfig": {"temperature": temperature if temperature is not None else 0.2},
+                    }
+                    if system_instructions:
+                        body["systemInstruction"] = {"parts": [{"text": system_instructions}]}
+
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        resp = await client.post(url, json=body)
+                        resp.raise_for_status()
+                        data = resp.json()
+                        candidates = data.get("candidates") or []
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts and "text" in parts[0]:
+                                return str(parts[0]["text"]).strip()
+                except Exception as exc:
+                    logger.warning("Gemini API call failed (%s); falling back to deterministic generation.", exc)
 
         return self._generate_deterministic_fallback(prompt, system_instructions)
 
