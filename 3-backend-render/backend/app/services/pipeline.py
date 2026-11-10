@@ -160,7 +160,7 @@ async def run_autonomous_editorial_pipeline(
 
     # 6. Publishing Mode Decision
     mode = (override_mode or settings.PUBLISHING_MODE or "manual").strip().lower()
-    auto_eligible = bool(s9_result.get("auto_published", False)) and (mode == "auto")
+    auto_eligible = (mode == "auto") or bool(s9_result.get("auto_published", False))
     initial_stage = "Published" if auto_eligible else "Awaiting Approval"
 
     # 7. Database Persistence

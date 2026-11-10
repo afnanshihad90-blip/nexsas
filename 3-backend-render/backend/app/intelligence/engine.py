@@ -39,10 +39,10 @@ from app.intelligence.security import SSRFValidationError, validate_safe_externa
 DEFAULT_CONFIGURED_SOURCES: List[Dict[str, Any]] = [
     {
         "id": "src-reuters-global",
-        "name": "Reuters Global Markets & Wire RSS",
-        "protocol": "RSS / Atom",
+        "name": "Global Markets & Business Wire RSS",
+        "protocol": "RSS 2.0",
         "connector_type": "rss_feed",
-        "endpoint_url": "https://feeds.reuters.com/reuters/businessNews",
+        "endpoint_url": "https://www.cnbc.com/id/10000664/device/rss/rss.html",
         "trust_tier": "Primary Wire",
         "reliability_score": 97.0,
         "poll_interval_seconds": 180,
@@ -61,16 +61,16 @@ DEFAULT_CONFIGURED_SOURCES: List[Dict[str, Any]] = [
     },
     {
         "id": "src-gdelt-v2-events",
-        "name": "GDELT 2.0 Global Knowledge Graph DOC API",
+        "name": "GDELT 2.0 Global World Events DOC API",
         "protocol": "REST JSON",
         "connector_type": "gdelt_api",
-        "endpoint_url": "https://api.gdeltproject.org/api/v2/doc/doc?format=json",
+        "endpoint_url": "https://api.gdeltproject.org/api/v2/doc/doc?query=world%20news&mode=ArtList&maxrecords=25&format=json",
         "trust_tier": "Public Open Data",
         "reliability_score": 91.0,
         "poll_interval_seconds": 300,
-        "timeout_seconds": 20,
+        "timeout_seconds": 15,
         "rate_limit_per_minute": 20,
-        "max_retries": 3,
+        "max_retries": 2,
         "status": "NOT_CONNECTED",
         "is_enabled": True,
         "robots_txt_compliant": True,
@@ -83,12 +83,12 @@ DEFAULT_CONFIGURED_SOURCES: List[Dict[str, Any]] = [
     },
     {
         "id": "src-approved-news-api",
-        "name": "Approved Tech & Compute News API",
-        "protocol": "REST JSON",
-        "connector_type": "news_api",
-        "endpoint_url": "https://newsapi.org/v2/top-headlines?category=technology",
+        "name": "Tech & AI Compute Wire RSS",
+        "protocol": "RSS 2.0",
+        "connector_type": "rss_feed",
+        "endpoint_url": "https://techcrunch.com/feed/",
         "trust_tier": "Verified Aggregator",
-        "reliability_score": 89.0,
+        "reliability_score": 92.0,
         "poll_interval_seconds": 300,
         "timeout_seconds": 15,
         "rate_limit_per_minute": 25,
@@ -105,10 +105,10 @@ DEFAULT_CONFIGURED_SOURCES: List[Dict[str, Any]] = [
     },
     {
         "id": "src-nasa-esa-science",
-        "name": "NASA & ESA Orbital Science Missions RSS",
+        "name": "Phys.org Space & Physics News RSS",
         "protocol": "RSS 2.0",
         "connector_type": "rss_feed",
-        "endpoint_url": "https://www.nasa.gov/news-release/feed/",
+        "endpoint_url": "https://phys.org/rss-feed/",
         "trust_tier": "Primary Filing",
         "reliability_score": 98.0,
         "poll_interval_seconds": 600,
@@ -628,4 +628,14 @@ def get_news_intelligence_engine() -> NewsIntelligenceEngine:
     global _GLOBAL_NEWS_ENGINE
     if _GLOBAL_NEWS_ENGINE is None:
         _GLOBAL_NEWS_ENGINE = NewsIntelligenceEngine()
+        try:
+            import threading
+            threading.Thread(
+                target=lambda: _GLOBAL_NEWS_ENGINE.run_collection_scan(
+                    idempotency_key="boot-wire-scan", trigger_source="server_startup"
+                ),
+                daemon=True,
+            ).start()
+        except Exception:
+            pass
     return _GLOBAL_NEWS_ENGINE
