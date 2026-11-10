@@ -113,6 +113,28 @@ CREATE INDEX IF NOT EXISTS idx_agent_execution_logs_agent_created
 CREATE INDEX IF NOT EXISTS idx_agent_execution_logs_workflow
   ON public.agent_execution_logs(workflow_run_id, created_at ASC);
 
+-- 7. Ensure role authorization helper exists
+CREATE OR REPLACE FUNCTION public.has_any_role(allowed_roles TEXT[])
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN FALSE;
+  END IF;
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.users u
+    JOIN public.user_roles ur ON ur.user_id = u.id
+    WHERE u.auth_user_id = auth.uid()
+      AND u.status = 'active'
+      AND ur.role_name = ANY(allowed_roles)
+  );
+END;
+$$;
+
 -- 8. Row Level Security (RLS) for new Step 4 tables
 ALTER TABLE public.workflow_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_execution_logs ENABLE ROW LEVEL SECURITY;

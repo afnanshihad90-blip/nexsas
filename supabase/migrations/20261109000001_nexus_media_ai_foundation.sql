@@ -665,6 +665,15 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.has_any_role(allowed_roles TEXT[])
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.has_nexus_role(allowed_roles);
+$$;
+
 CREATE OR REPLACE FUNCTION public.is_nexus_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
