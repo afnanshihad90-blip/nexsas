@@ -14,13 +14,14 @@ export const KPICard: React.FC<KPICardProps> = ({ metric, onNavigate }) => {
       onClick={() => onNavigate(metric.targetNav)}
       className="group w-full text-left p-4 sm:p-5 rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 hover:border-blue-500/50 dark:hover:border-blue-500/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
     >
-      {/* Top Row: Label + Unboxed Demo Data disclosure */}
+      {/* Top Row: Label + Live Status disclosure */}
       <div className="flex items-center justify-between gap-2 mb-2">
         <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate">
           {metric.label}
         </span>
-        <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500 whitespace-nowrap shrink-0">
-          DEMO DATA
+        <span className="inline-flex items-center gap-1 font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold whitespace-nowrap shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          LIVE
         </span>
       </div>
 

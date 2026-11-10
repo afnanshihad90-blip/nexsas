@@ -22,6 +22,7 @@ import {
   NavPageId,
   NotificationItem,
 } from '../types/dashboard';
+import { nexusApi } from '../services/apiService';
 
 interface HeaderProps {
   activePage: NavPageId;
@@ -320,19 +321,28 @@ export const Header: React.FC<HeaderProps> = ({
           </select>
         </div>
 
-        {/* System Status Indicator (Honest Step 1 Indicator) */}
+        {/* System Status Indicator (Production vs Standby) */}
         <button
           type="button"
           onClick={() => onSelectPage('system-health')}
           title="Inspect System Health status"
           className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 hover:border-blue-500/40 transition-colors whitespace-nowrap shrink-0"
         >
-          <ServerOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-          <span>Step 1 Demo</span>
-          <span aria-hidden="true" className="text-slate-400">
-            ·
-          </span>
-          <span className="text-slate-500 dark:text-slate-400">API Unbound</span>
+          {nexusApi.getDiagnostics().isConfigured ? (
+            <>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">Production</span>
+              <span aria-hidden="true" className="text-slate-400">·</span>
+              <span className="text-slate-600 dark:text-slate-300 font-medium">FastAPI Online</span>
+            </>
+          ) : (
+            <>
+              <ServerOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>Standby</span>
+              <span aria-hidden="true" className="text-slate-400">·</span>
+              <span className="text-slate-500 dark:text-slate-400">API Offline</span>
+            </>
+          )}
         </button>
 
         {/* Theme Toggle */}
@@ -371,7 +381,7 @@ export const Header: React.FC<HeaderProps> = ({
                     System &amp; Editorial Alerts
                   </div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Step 1 local notification stream
+                    Live intelligence notification stream
                   </div>
                 </div>
                 {unreadCount > 0 && (

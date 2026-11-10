@@ -37,7 +37,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <span>Platform &amp; Editorial Governance Settings</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Configure local Step 1 control plane defaults, autonomous verification thresholds, and UI preferences.
+              Configure newsroom control plane defaults, autonomous verification thresholds, and UI preferences.
             </p>
           </div>
 
@@ -47,7 +47,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors self-start sm:self-auto"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset All Demo State</span>
+            <span>Reset Local Session Cache</span>
           </button>
         </div>
 
@@ -55,7 +55,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           <div className="mt-4 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
             <Check className="w-4 h-4 shrink-0" />
             <span>
-              Settings saved to local Step 1 session state. Persistent database sync will activate in Step 2.
+              Settings saved to workspace session state.
             </span>
           </div>
         )}

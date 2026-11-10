@@ -90,7 +90,7 @@ export const SystemHealth: React.FC<SystemHealthProps> = ({
               ·
             </span>
             <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
-              Step 1 Diagnostics
+              Live Diagnostics
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">

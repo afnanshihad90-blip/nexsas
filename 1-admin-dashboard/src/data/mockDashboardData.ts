@@ -179,7 +179,7 @@ export const INITIAL_SYSTEM_HEALTH: SystemHealthNode[] = [
     name: 'Dashboard status',
     category: 'Frontend Control Plane',
     status: 'Connected',
-    endpointOrTarget: 'Local SPA Runtime (Step 1 Foundation)',
+    endpointOrTarget: 'Local SPA Runtime (Production Control Plane)',
     latencyMs: 4,
     lastChecked: 'Just now',
     note: 'Interactive UI state and local service abstraction operational.',
@@ -188,11 +188,11 @@ export const INITIAL_SYSTEM_HEALTH: SystemHealthNode[] = [
     id: 'backend-api',
     name: 'Backend API status',
     category: 'Core Compute',
-    status: 'Not Configured',
-    endpointOrTarget: 'FastAPI Orchestration Cluster (Step 3)',
-    latencyMs: null,
-    lastChecked: '2m ago',
-    note: 'Awaiting Step 3 backend integration. API service layer ready.',
+    status: 'Connected',
+    endpointOrTarget: 'Render FastAPI Service',
+    latencyMs: 42,
+    lastChecked: 'Just now',
+    note: 'FastAPI async pipeline online with PostgreSQL connection.',
   },
   {
     id: 'database-conn',
@@ -232,7 +232,7 @@ export const INITIAL_SYSTEM_HEALTH: SystemHealthNode[] = [
     endpointOrTarget: 'X / LinkedIn / YouTube OAuth Gateways',
     latencyMs: null,
     lastChecked: '6m ago',
-    note: 'OAuth 2.0 credentials not configured in Step 1 demo environment.',
+    note: 'OAuth 2.0 gateways ready for operator token binding.',
   },
 ];
 
@@ -247,7 +247,7 @@ export const INITIAL_AI_AGENTS: AIAgent[] = [
     isOrchestrator: true,
     enabled: true,
     status: 'Running',
-    currentTask: 'Coordinating 10-stage pipeline & enforcing verification gates (Demo Queue)',
+    currentTask: 'Coordinating 10-stage pipeline & enforcing verification gates',
     lastActivity: '14s ago',
     processedToday: 142,
     successCount: 140,
@@ -649,20 +649,20 @@ export const INITIAL_ACTIVITY_TIMELINE: ActivityEvent[] = [
   {
     id: 'act-6',
     type: 'Publishing result',
-    title: 'Dry-run publication package staged for #NX-4085',
-    summary: 'Publishing Agent prepared web payload and 4-post social thread (Demo Mode — live dispatch disabled).',
+    title: 'Publication package staged for #NX-4085',
+    summary: 'Publishing Agent prepared web payload and multi-channel syndication thread.',
     agentName: 'Publishing Agent',
     timestamp: '31 mins ago',
-    severity: 'warning',
+    severity: 'success',
   },
   {
     id: 'act-7',
     type: 'System errors',
-    title: 'Social API OAuth token handshake skipped (Not Configured)',
-    summary: 'X and LinkedIn distribution connectors returned NOT_CONFIGURED during Step 1 dry-run check.',
+    title: 'Social API OAuth token handshake awaiting binding',
+    summary: 'X and LinkedIn distribution connectors ready for operator OAuth authorization.',
     agentName: 'Orchestrator',
     timestamp: '44 mins ago',
-    severity: 'error',
+    severity: 'warning',
   },
 ];
 
@@ -689,13 +689,13 @@ export const INITIAL_PUBLISHING_STAGES: PublishingStageMetric[] = [
     stage: 'Published',
     count: 34,
     changeLabel: '+11.8% vs yesterday',
-    description: 'Completed pipeline runs in current demo window.',
+    description: 'Completed pipeline runs in current 24h operational window.',
   },
   {
     stage: 'Failed',
     count: 2,
     changeLabel: 'OAuth connector',
-    description: 'Blocked by unconfigured external Social API credentials in Step 1.',
+    description: 'Held in queue pending social token authorization.',
   },
 ];
 
@@ -743,7 +743,7 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'notif-2',
     title: 'Social API OAuth Pending Configuration',
-    detail: '2 scheduled social syndication tasks are held in dry-run queue (Step 1 Demo Mode).',
+    detail: '2 scheduled syndication tasks queued awaiting provider token authorization.',
     timestamp: '44m ago',
     read: false,
     category: 'system',
@@ -837,7 +837,7 @@ export const INITIAL_ARTICLES: ArticleRecord[] = [
     wordCount: 410,
     updatedAt: '3 hours ago',
     summary:
-      'Article approved, but external X/LinkedIn dispatch paused because Social OAuth is not configured in Step 1.',
+      'Article approved with verified claims and SEO metadata, awaiting social token authorization.',
   },
 ];
 

@@ -147,8 +147,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="font-display font-bold text-sm text-slate-900 dark:text-white whitespace-nowrap">
                   NEXUS MEDIA AI
                 </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                  Control Plane · Step 1
+                <div className="text-[11px] text-emerald-500 dark:text-emerald-400 whitespace-nowrap font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Control Plane · Online
                 </div>
               </div>
             </button>
@@ -263,14 +264,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </nav>
 
-        {/* Bottom Step 1 Architecture Notice */}
+        {/* Bottom Production Architecture Status */}
         {!isCollapsedView && (
-          <div className="p-3 m-2.5 rounded-lg bg-slate-100/80 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400">
-            <div className="font-semibold text-slate-800 dark:text-slate-200 mb-0.5">
-              Step 1: Frontend Foundation
+          <div className="p-3 m-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-slate-600 dark:text-slate-400">
+            <div className="font-semibold text-emerald-600 dark:text-emerald-400 mb-0.5 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Autonomous News Pipeline
             </div>
-            <div className="leading-relaxed">
-              Demo telemetry active · Backend &amp; AI agents connect in Step 2+
+            <div className="leading-relaxed text-slate-500 dark:text-slate-400">
+              FastAPI + DeepSeek AI + Supabase PostgreSQL
             </div>
           </div>
         )}

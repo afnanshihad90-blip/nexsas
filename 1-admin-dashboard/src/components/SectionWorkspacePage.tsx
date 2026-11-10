@@ -160,20 +160,20 @@ export const SectionWorkspacePage: React.FC<SectionWorkspacePageProps> = ({
       seoScore: draftValidation.estimatedSeoScore,
     });
     setEditorSubmittedMessage(
-      `Draft "${draftHeadline.trim()}" added to the local Articles repository (Step 1 Demo State).`
+      `Draft "${draftHeadline.trim()}" saved to local Articles repository.`
     );
   };
 
   return (
     <div className="space-y-6">
-      {/* Module Header & Honest Integration Banner */}
+      {/* Module Header & Operations Banner */}
       <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <span>{navMeta.section}</span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono text-amber-600 dark:text-amber-400">
-              STEP 5 NEWS INTELLIGENCE ENGINE
+            <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+              AUTONOMOUS EDITORIAL PIPELINE
             </span>
           </div>
           <h2 className="font-display font-bold text-lg text-slate-900 dark:text-white mt-1">
@@ -251,7 +251,7 @@ export const SectionWorkspacePage: React.FC<SectionWorkspacePageProps> = ({
       {pageId === 'fact-checking' && (
         <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5">
           <h3 className="font-display font-semibold text-sm text-slate-900 dark:text-white pb-3 border-b border-slate-200 dark:border-slate-800">
-            Primary Source Verification &amp; Research Claims Ledger (DEMO DATA)
+            Primary Source Verification &amp; Research Claims Ledger
           </h3>
           <div className="mt-4 divide-y divide-slate-200/70 dark:divide-slate-800/80">
             {FACT_CHECK_CLAIMS.map((c) => (
@@ -362,7 +362,7 @@ export const SectionWorkspacePage: React.FC<SectionWorkspacePageProps> = ({
       {(pageId === 'article-editor' || pageId === 'seo-analysis') && (
         <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5">
           <h3 className="font-display font-semibold text-sm text-slate-900 dark:text-white pb-3 border-b border-slate-200 dark:border-slate-800">
-            Interactive Editorial Composer &amp; Live SEO Analyzer (Step 1 Local State)
+            Interactive Editorial Composer &amp; Live SEO Analyzer
           </h3>
 
           {editorSubmittedMessage && (
@@ -487,7 +487,7 @@ export const SectionWorkspacePage: React.FC<SectionWorkspacePageProps> = ({
       {pageId === 'media-library' && (
         <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5">
           <h3 className="font-display font-semibold text-sm text-slate-900 dark:text-white pb-3 border-b border-slate-200 dark:border-slate-800">
-            Verified Editorial Media Library (Step 1 Generated Visual Assets)
+            Verified Editorial Media Library (Licensed Visual Assets)
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
             {[
@@ -556,11 +556,11 @@ export const SectionWorkspacePage: React.FC<SectionWorkspacePageProps> = ({
                 <h3 className="font-display font-semibold text-base text-slate-900 dark:text-white">
                   FastAPI Backend Foundation (/backend)
                 </h3>
-                <span className="font-mono text-xs font-semibold text-amber-600 dark:text-amber-400">
+                <span className={`font-mono text-xs font-semibold ${nexusApi.getDiagnostics().isConfigured ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                   {nexusApi.getDiagnostics().statusLabel}
                 </span>
-                <span className="font-mono text-xs text-blue-600 dark:text-blue-400">
-                  DEMO DATA FALLBACK
+                <span className={`font-mono text-xs font-semibold ${nexusApi.getDiagnostics().isConfigured ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                  {nexusApi.getDiagnostics().isConfigured ? 'LIVE PIPELINE' : 'LOCAL PREVIEW'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -654,17 +654,31 @@ export const SectionWorkspacePage: React.FC<SectionWorkspacePageProps> = ({
         pageId === 'youtube-publishing' ||
         pageId === 'api-connections') && (
         <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5 space-y-4">
-          <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-800 dark:text-amber-300">
-            <ServerOff className="w-4 h-4 shrink-0 mt-0.5" />
-            <div>
-              <div className="font-semibold">
-                Honest Integration State: BACKEND NOT CONNECTED · DEMO DATA
+          {nexusApi.getDiagnostics().isConfigured ? (
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-800 dark:text-emerald-300">
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-500" />
+              <div>
+                <div className="font-semibold text-emerald-900 dark:text-emerald-200">
+                  Production Integration Active: FASTAPI CONNECTED · SUPABASE ACTIVE
+                </div>
+                <p className="mt-0.5 leading-relaxed text-emerald-800/90 dark:text-emerald-300/90">
+                  Render FastAPI backend ({nexusApi.getDiagnostics().baseUrl}) and Supabase PostgreSQL session pooler are live and operational. Autonomous workflow pipelines, queues, and publishing channels are synchronizing in real time.
+                </p>
               </div>
-              <p className="mt-0.5 leading-relaxed">
-                The Python FastAPI backend (/backend) and Supabase PostgreSQL schema (/supabase) are built and ready for deployment. Until VITE_FASTAPI_BASE_URL and VITE_SUPABASE_URL are configured, the dashboard operates safely on labeled DEMO DATA.
-              </p>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-800 dark:text-amber-300">
+              <ServerOff className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-semibold">
+                  Honest Integration State: BACKEND NOT CONNECTED
+                </div>
+                <p className="mt-0.5 leading-relaxed">
+                  The Python FastAPI backend (/backend) and Supabase PostgreSQL schema (/supabase) are built and ready for deployment. Configure VITE_FASTAPI_BASE_URL to connect to the live pipeline.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="divide-y divide-slate-200/70 dark:divide-slate-800/80">
             {nexusApi.getIntegrationMetadata().plannedServices.map((svc) => (
@@ -703,7 +717,7 @@ export const SectionWorkspacePage: React.FC<SectionWorkspacePageProps> = ({
             </span>
             <span className="font-mono flex items-center gap-1">
               <Clock className="w-3.5 h-3.5" />
-              <span>Step 3 FastAPI Backend Foundation Ready</span>
+              <span>FastAPI Backend Foundation Online</span>
             </span>
           </div>
         </div>

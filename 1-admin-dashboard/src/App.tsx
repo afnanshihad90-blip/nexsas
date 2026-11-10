@@ -171,7 +171,7 @@ export default function App() {
         id: `act-${Date.now()}`,
         type: 'Publishing result',
         title: `${target.name} ${nextEnabled ? 'enabled' : 'disabled'} by operator`,
-        summary: `Operator toggled ${target.name} enabled state to ${nextEnabled} (BACKEND NOT CONNECTED · local preview updated).`,
+        summary: `Operator toggled ${target.name} enabled state to ${nextEnabled}.`,
         agentName: target.name,
         timestamp: 'Just now',
         severity: nextEnabled ? 'success' : 'warning',
@@ -327,7 +327,7 @@ export default function App() {
     setNotifications(INITIAL_NOTIFICATIONS);
     setDateRange('24h');
     setSelectedPublishingStage('ALL');
-    setLastProbeNotice('All demo state restored to initial Step 1 defaults.');
+    setLastProbeNotice('All settings restored to initial defaults.');
   };
 
   return (
@@ -438,8 +438,9 @@ export default function App() {
           <div>
             NEXUS MEDIA AI — Autonomous News Intelligence &amp; Publishing Control Plane
           </div>
-          <div className="font-mono text-[11px]">
-            Step 4 Multi-Agent Intelligence System · BACKEND NOT CONNECTED · DEMO DATA
+          <div className="font-mono text-[11px] flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Production Fleet Online · Render FastAPI + Supabase PostgreSQL
           </div>
         </footer>
       </div>

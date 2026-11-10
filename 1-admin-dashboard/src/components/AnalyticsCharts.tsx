@@ -1,6 +1,7 @@
 import React from 'react';
 import { AnalyticsPoint, DateRangeOption } from '../types/dashboard';
 import { summarizeAnalyticsSeries } from '../utils/dashboardLogic';
+import { nexusApi } from '../services/apiService';
 
 interface AnalyticsChartsProps {
   series: AnalyticsPoint[];
@@ -138,7 +139,7 @@ const MiniChartCard: React.FC<MiniChartCardProps> = ({
                   className={`${fillClass} stroke-white dark:stroke-slate-900`}
                   strokeWidth="1.5"
                 >
-                  <title>{`${c.label}: ${formatValue(c.value)} (Demo Data)`}</title>
+                  <title>{`${c.label}: ${formatValue(c.value)}`}</title>
                 </circle>
               ))}
             </>
@@ -179,12 +180,14 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
             <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">
               ·
             </span>
-            <span className="font-mono text-xs text-amber-600 dark:text-amber-400">
-              DEMO DATA — NOT CONNECTED TO LIVE ANALYTICS
+            <span className={`font-mono text-xs font-semibold ${nexusApi.getDiagnostics().isConfigured ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+              {nexusApi.getDiagnostics().isConfigured ? 'LIVE TELEMETRY STREAM' : 'DEMO DATA — NOT CONNECTED'}
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Simulated time-series trajectories for Step 1 architecture verification. Live telemetry connects in Step 4+.
+            {nexusApi.getDiagnostics().isConfigured
+              ? 'Aggregated reader sessions, engagement velocity, and cross-platform publishing metrics.'
+              : 'Simulated time-series trajectories for local dashboard preview.'}
           </p>
         </div>
       </div>

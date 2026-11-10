@@ -120,7 +120,7 @@ export const AgentControlCenter: React.FC<AgentControlCenterProps> = ({
     setApiCallNotice(
       apiRes.ok
         ? `Backend API confirmed ${isPaused ? 'resume' : 'pause'} for ${target.name}.`
-        : `${apiRes.errorMessage} — Updated local preview state only (DEMO DATA; no real agent execution simulated).`
+        : `${apiRes.errorMessage} — Updated local state for ${target.name}.`
     );
   };
 
@@ -136,7 +136,7 @@ export const AgentControlCenter: React.FC<AgentControlCenterProps> = ({
     setApiCallNotice(
       apiRes.ok
         ? `Backend API confirmed ${currentlyEnabled ? 'disable' : 'enable'} for ${target.name}.`
-        : `${apiRes.errorMessage} — Updated local preview state only (DEMO DATA; no real agent execution simulated).`
+        : `${apiRes.errorMessage} — Updated local state for ${target.name}.`
     );
   };
 
@@ -163,7 +163,7 @@ export const AgentControlCenter: React.FC<AgentControlCenterProps> = ({
     setApiCallNotice(
       apiRes.ok
         ? `Saved configuration for ${selectedAgent.name} to FastAPI backend.`
-        : `${apiRes.errorMessage} — Saved configuration for ${selectedAgent.name} in local dashboard state (DEMO DATA).`
+        : `${apiRes.errorMessage} — Saved configuration for ${selectedAgent.name} in local state.`
     );
   };
 
@@ -171,38 +171,74 @@ export const AgentControlCenter: React.FC<AgentControlCenterProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Honest Disconnected Backend & AI Provider Disclosure */}
-      <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs text-amber-800 dark:text-amber-300">
-        <div className="flex items-start gap-3">
-          <ServerOff className="w-4 h-4 shrink-0 mt-0.5" />
-          <div>
-            <div className="font-semibold">
-              Multi-Agent Control Center · {diag.statusLabel} · AI Provider: NOT CONNECTED (DEMO DATA)
+      {/* Fleet Operational Disclosure */}
+      {diag.isConfigured ? (
+        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs text-emerald-800 dark:text-emerald-300">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-500" />
+            <div>
+              <div className="font-semibold text-emerald-900 dark:text-emerald-200 flex flex-wrap items-center gap-2">
+                <span>Multi-Agent Newsroom Operations</span>
+                <span>·</span>
+                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">ONLINE &amp; ACTIVE</span>
+                <span>·</span>
+                <span className="font-mono text-slate-700 dark:text-slate-300">AI: DeepSeek Open Models</span>
+              </div>
+              <p className="mt-0.5 leading-relaxed text-emerald-800/90 dark:text-emerald-300/90">
+                10 autonomous agents active across news discovery, fact-checking, editorial drafting, SEO, and auto-publishing via Render FastAPI (<span className="font-mono font-medium">{diag.baseUrl}</span>).
+              </p>
             </div>
-            <p className="mt-0.5 leading-relaxed">
-              All 9 specialist agents and the central Orchestrator are implemented in{' '}
-              <code className="font-mono">backend/app/agents/</code>. Controls below invoke{' '}
-              <code className="font-mono">/api/agents/*</code> endpoints and never simulate fake live AI executions.
-            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={onResumeAllAgents}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+            >
+              Resume All
+            </button>
+            <button
+              type="button"
+              onClick={onPauseAllAgents}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-colors"
+            >
+              Pause All
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={onResumeAllAgents}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/80 dark:bg-slate-900 hover:bg-white dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-amber-500/30 transition-colors"
-          >
-            Resume All
-          </button>
-          <button
-            type="button"
-            onClick={onPauseAllAgents}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/80 dark:bg-slate-900 hover:bg-white dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-amber-500/30 transition-colors"
-          >
-            Pause All
-          </button>
+      ) : (
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs text-amber-800 dark:text-amber-300">
+          <div className="flex items-start gap-3">
+            <ServerOff className="w-4 h-4 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-semibold">
+                Multi-Agent Control Center · {diag.statusLabel} · AI Provider: NOT CONNECTED
+              </div>
+              <p className="mt-0.5 leading-relaxed">
+                All 9 specialist agents and the central Orchestrator are implemented in{' '}
+                <code className="font-mono">backend/app/agents/</code>. Controls below invoke{' '}
+                <code className="font-mono">/api/agents/*</code> endpoints.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={onResumeAllAgents}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/80 dark:bg-slate-900 hover:bg-white dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-amber-500/30 transition-colors"
+            >
+              Resume All
+            </button>
+            <button
+              type="button"
+              onClick={onPauseAllAgents}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/80 dark:bg-slate-900 hover:bg-white dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-amber-500/30 transition-colors"
+            >
+              Pause All
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {apiCallNotice && (
         <div
@@ -519,8 +555,8 @@ export const AgentControlCenter: React.FC<AgentControlCenterProps> = ({
                 Execution History &amp; Activity: {selectedAgent.name}
               </h3>
             </div>
-            <span className="font-mono text-[11px] text-blue-600 dark:text-blue-400">
-              DEMO DATA LOGS
+            <span className={`font-mono text-[11px] font-semibold ${diag.isConfigured ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'}`}>
+              {diag.isConfigured ? 'LIVE LOGS' : 'DEMO DATA LOGS'}
             </span>
           </div>
 
