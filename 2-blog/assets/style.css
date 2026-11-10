@@ -1,0 +1,23 @@
+:root{--bg:#fff;--fg:#14181f;--muted:#5b6472;--line:#e5e8ee;--accent:#1f5eff;--card:#f7f8fb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1218;--fg:#e8ebf1;--muted:#9aa3b2;--line:#252b36;--accent:#6c93ff;--card:#171b24}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.65 Georgia,'Times New Roman',serif}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1120px;margin:0 auto;padding:0 18px}.small{font-size:.85rem;color:var(--muted)}
+.site-header{border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+.bar{display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:12px 18px;font-family:system-ui,sans-serif}
+.brand{font-weight:800;font-size:1.3rem;color:var(--fg)}nav{display:flex;gap:14px;flex-wrap:wrap;flex:1;font-size:.92rem}
+.search input{padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:32px}@media(max-width:860px){.layout{grid-template-columns:1fr}}
+.card{display:grid;grid-template-columns:220px 1fr;gap:16px;padding:18px 0;border-bottom:1px solid var(--line)}
+.card.big{grid-template-columns:1fr}.card img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px}
+.card h2{margin:.3rem 0;font-size:1.25rem;line-height:1.3}.card.big h2{font-size:1.8rem}.card h2 a{color:var(--fg)}.card p{margin:.3rem 0;color:var(--muted)}
+@media(max-width:600px){.card{grid-template-columns:1fr}}
+.tag{font:700 .72rem system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em}
+.post{max-width:720px}.post h1{font-size:2.1rem;line-height:1.2;margin:.4rem 0}.post figure{margin:1rem 0}.post img{max-width:100%;border-radius:10px}
+.body p{margin:1.1rem 0}.body h2,.body h3{margin-top:2rem;line-height:1.3}.meta,.crumbs{font-family:system-ui,sans-serif}
+.sources,.disclosure{border-top:1px solid var(--line);margin-top:2rem;padding-top:1rem}.grid{display:grid;gap:12px}
+.sidebar{font-family:system-ui,sans-serif}.sidebar h3{font-size:.9rem;text-transform:uppercase;letter-spacing:.06em}.popular{padding-left:1.2rem}
+.newsletter{background:var(--card);padding:14px;border-radius:10px;margin-top:20px}
+.ad{margin:18px 0;text-align:center;min-height:90px}.ad-label{display:block;font:.65rem system-ui;color:var(--muted);text-transform:uppercase}
+.site-footer{border-top:1px solid var(--line);margin-top:48px;padding:24px 0;font-family:system-ui,sans-serif;color:var(--muted)}
+.empty{padding:40px 0;color:var(--muted)}.pager a{margin-right:12px}

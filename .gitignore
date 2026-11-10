@@ -1,0 +1,42 @@
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+Include/
+Lib/
+Scripts/
+pyvenv.cfg
+
+# Python cache & tests
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node & Frontend
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Large zip archives
+*.zip
+
+# PHP & Local tools
+tools/
+*.db
+*.sqlite3
+test_blog.db
+
+# Secrets & Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db

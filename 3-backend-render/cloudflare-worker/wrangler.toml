@@ -1,0 +1,13 @@
+name = "nexus-scheduler"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# UTC time. Every 30 minutes: news scan. 
+[triggers]
+crons = ["*/30 * * * *"]
+
+[vars]
+BACKEND_URL = "https://YOUR-RENDER-SERVICE.onrender.com"
+
+# Secrets (set with: npx wrangler secret put WORKER_AUTH_SECRET)
+#   WORKER_AUTH_SECRET = same value as CLOUDFLARE_WEBHOOK_SECRET on Render

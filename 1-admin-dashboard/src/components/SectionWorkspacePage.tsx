@@ -1,0 +1,713 @@
+import React, { useState } from 'react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Database,
+  FilePlus2,
+  GitBranch,
+  Globe,
+  Link2,
+  ServerOff,
+  Share2,
+  Video,
+} from 'lucide-react';
+import {
+  FACT_CHECK_CLAIMS,
+  GENERATED_ASSETS,
+  NAVIGATION_ITEMS,
+  NEWS_SOURCE_FEEDS,
+  TRENDING_SIGNALS,
+} from '../data/mockDashboardData';
+import {
+  ActivityEvent,
+  AIAgent,
+  AnalyticsPoint,
+  ArticleRecord,
+  DateRangeOption,
+  NavPageId,
+  PublishingStageKey,
+  PublishingStageMetric,
+  SystemConnectionState,
+  SystemHealthNode,
+} from '../types/dashboard';
+import { filterArticles, validateArticleDraft } from '../utils/dashboardLogic';
+import { SystemHealth, renderStatusIndicator } from './SystemHealth';
+import { AgentControlCenter } from './AgentControlCenter';
+import { PublishingOverview } from './PublishingOverview';
+import { AnalyticsCharts } from './AnalyticsCharts';
+import { ActivityTimeline } from './ActivityTimeline';
+import { DatabaseStatusPanel } from './DatabaseStatusPanel';
+import { NewsIntelligenceCenter } from './NewsIntelligenceCenter';
+import {
+  DatabaseLiveSnapshot,
+  SupabaseEnvValidationResult,
+} from '../services/supabaseClient';
+import { nexusApi } from '../services/apiService';
+
+interface SectionWorkspacePageProps {
+  pageId: NavPageId;
+  onNavigate: (page: NavPageId) => void;
+  healthNodes: SystemHealthNode[];
+  isRefreshingHealth: boolean;
+  lastProbeNotice: string | null;
+  onRefreshHealth: () => void;
+  onChangeHealthNodeState: (nodeId: string, nextState: SystemConnectionState) => void;
+  agents: AIAgent[];
+  onToggleAgentPause: (agentId: string) => void;
+  onToggleAgentEnabled: (agentId: string) => void;
+  onUpdateAgentConfig: (
+    agentId: string,
+    updates: {
+      enabled?: boolean;
+      provider?: string;
+      model?: string;
+      timeoutSeconds?: number;
+      maxRetries?: number;
+      temperature?: number;
+      systemInstructions?: string;
+    }
+  ) => void;
+  onPauseAllAgents: () => void;
+  onResumeAllAgents: () => void;
+  articles: ArticleRecord[];
+  onCreateArticleDraft: (draft: {
+    headline: string;
+    category: string;
+    body: string;
+    primarySourceUrl: string;
+    wordCount: number;
+    seoScore: number;
+  }) => void;
+  publishingStages: PublishingStageMetric[];
+  selectedStage: PublishingStageKey | 'ALL';
+  onSelectStage: (stage: PublishingStageKey | 'ALL') => void;
+  analyticsSeries: AnalyticsPoint[];
+  dateRange: DateRangeOption;
+  activityEvents: ActivityEvent[];
+  dbDiagnostics: SupabaseEnvValidationResult;
+  dbSnapshot: DatabaseLiveSnapshot;
+  isProbingDb: boolean;
+  onProbeDatabase: () => void;
+}
+
+export const SectionWorkspacePage: React.FC<SectionWorkspacePageProps> = ({
+  pageId,
+  onNavigate,
+  healthNodes,
+  isRefreshingHealth,
+  lastProbeNotice,
+  onRefreshHealth,
+  onChangeHealthNodeState,
+  agents,
+  onToggleAgentPause,
+  onToggleAgentEnabled,
+  onUpdateAgentConfig,
+  onPauseAllAgents,
+  onResumeAllAgents,
+  articles,
+  onCreateArticleDraft,
+  publishingStages,
+  selectedStage,
+  onSelectStage,
+  analyticsSeries,
+  dateRange,
+  activityEvents,
+  dbDiagnostics,
+  dbSnapshot,
+  isProbingDb,
+  onProbeDatabase,
+}) => {
+  const navMeta =
+    NAVIGATION_ITEMS.find((item) => item.id === pageId) ?? NAVIGATION_ITEMS[0];
+
+  // Local state for Articles filter
+  const [articleFilterQuery, setArticleFilterQuery] = useState('');
+  const [articleStageFilter, setArticleStageFilter] = useState<string>('ALL');
+
+  // Local state for Article Editor
+  const [draftHeadline, setDraftHeadline] = useState(
+    'Global Foundry Wafer Allocation Shifts Toward High-Density AI Packaging'
+  );
+  const [draftCategory, setDraftCategory] = useState('Semiconductors');
+  const [draftSourceUrl, setDraftSourceUrl] = useState(
+    'https://www.sec.gov/edgar/searchedgar/companysearch'
+  );
+  const [draftBody, setDraftBody] = useState(
+    'Quarterly capital expenditure filings across major semiconductor fabrication plants confirm a structural reallocation of cleanroom capacity toward advanced 2.5D and 3D wafer-level packaging lines. Supply chain telemetry compiled during Q3 indicates lead times for interposer substrates have narrowed by 18 percent following new tooling commissioning.'
+  );
+  const [editorSubmittedMessage, setEditorSubmittedMessage] = useState<string | null>(
+    null
+  );
+  const [mediaImgError, setMediaImgError] = useState<Record<string, boolean>>({});
+
+  const draftValidation = validateArticleDraft({
+    headline: draftHeadline,
+    category: draftCategory,
+    body: draftBody,
+    primarySourceUrl: draftSourceUrl,
+  });
+
+  const handleSaveDraft = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!draftValidation.valid) return;
+    onCreateArticleDraft({
+      headline: draftHeadline.trim(),
+      category: draftCategory,
+      body: draftBody.trim(),
+      primarySourceUrl: draftSourceUrl.trim(),
+      wordCount: draftValidation.wordCount,
+      seoScore: draftValidation.estimatedSeoScore,
+    });
+    setEditorSubmittedMessage(
+      `Draft "${draftHeadline.trim()}" added to the local Articles repository (Step 1 Demo State).`
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Module Header & Honest Integration Banner */}
+      <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span>{navMeta.section}</span>
+            <span aria-hidden="true">·</span>
+            <span className="font-mono text-amber-600 dark:text-amber-400">
+              STEP 5 NEWS INTELLIGENCE ENGINE
+            </span>
+          </div>
+          <h2 className="font-display font-bold text-lg text-slate-900 dark:text-white mt-1">
+            {navMeta.label}
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+            {navMeta.description}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => onNavigate('dashboard')}
+            className="px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition-colors whitespace-nowrap"
+          >
+            ← Back to Overview
+          </button>
+        </div>
+      </div>
+
+      {/* Specialized Module Views */}
+      {pageId === 'system-health' && (
+        <SystemHealth
+          nodes={healthNodes}
+          isRefreshing={isRefreshingHealth}
+          lastProbeNotice={lastProbeNotice}
+          onRefreshAll={onRefreshHealth}
+          onChangeNodeState={onChangeHealthNodeState}
+        />
+      )}
+
+      {(pageId === 'ai-agents' || pageId === 'workflow-manager') && (
+        <AgentControlCenter
+          agents={agents}
+          activityEvents={activityEvents}
+          onToggleAgentPause={onToggleAgentPause}
+          onToggleAgentEnabled={onToggleAgentEnabled}
+          onUpdateAgentConfig={onUpdateAgentConfig}
+          onPauseAllAgents={onPauseAllAgents}
+          onResumeAllAgents={onResumeAllAgents}
+        />
+      )}
+
+      {pageId === 'publishing-queue' && (
+        <PublishingOverview
+          stages={publishingStages}
+          articles={articles}
+          selectedStage={selectedStage}
+          onSelectStage={onSelectStage}
+          onNavigate={onNavigate}
+        />
+      )}
+
+      {(pageId === 'website-traffic' ||
+        pageId === 'social-reach' ||
+        pageId === 'revenue-analytics') && (
+        <AnalyticsCharts series={analyticsSeries} dateRange={dateRange} />
+      )}
+
+      {pageId === 'activity-logs' && <ActivityTimeline events={activityEvents} />}
+
+      {pageId === 'trending-news' && <NewsIntelligenceCenter initialTab="trending" />}
+
+      {pageId === 'news-sources' && <NewsIntelligenceCenter initialTab="sources" />}
+
+      {pageId === 'research-center' && (
+        <NewsIntelligenceCenter initialTab="research-prep" />
+      )}
+
+      {pageId === 'scheduler' && (
+        <NewsIntelligenceCenter initialTab="collection-monitor" />
+      )}
+
+      {pageId === 'fact-checking' && (
+        <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5">
+          <h3 className="font-display font-semibold text-sm text-slate-900 dark:text-white pb-3 border-b border-slate-200 dark:border-slate-800">
+            Primary Source Verification &amp; Research Claims Ledger (DEMO DATA)
+          </h3>
+          <div className="mt-4 divide-y divide-slate-200/70 dark:divide-slate-800/80">
+            {FACT_CHECK_CLAIMS.map((c) => (
+              <div key={c.id} className="py-3.5 first:pt-0 last:pb-0 space-y-1 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                    {c.claimText}
+                  </span>
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400 tabular-nums shrink-0">
+                    {c.confidencePct}% confidence
+                  </span>
+                </div>
+                <div className="text-slate-500 dark:text-slate-400">
+                  Article: {c.articleHeadline}
+                </div>
+                <div className="font-mono text-[11px] text-slate-400 flex items-center gap-2">
+                  <span>{c.verdict}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{c.sourcesChecked} primary filings audited</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{c.timestamp}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pageId === 'articles' && (
+        <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="search"
+                value={articleFilterQuery}
+                onChange={(e) => setArticleFilterQuery(e.target.value)}
+                placeholder="Filter articles by headline or sector..."
+                aria-label="Filter articles by headline or sector"
+                className="px-3 py-1.5 rounded-lg text-xs bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100"
+              />
+              <select
+                aria-label="Filter by publishing stage"
+                value={articleStageFilter}
+                onChange={(e) => setArticleStageFilter(e.target.value)}
+                className="px-3 py-1.5 rounded-lg text-xs bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100"
+              >
+                <option value="ALL">All Stages</option>
+                <option value="Drafts">Drafts</option>
+                <option value="Awaiting Approval">Awaiting Approval</option>
+                <option value="Scheduled">Scheduled</option>
+                <option value="Published">Published</option>
+                <option value="Failed">Failed</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('article-editor')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white transition-colors self-start sm:self-auto"
+            >
+              <FilePlus2 className="w-3.5 h-3.5" />
+              <span>Compose New Article</span>
+            </button>
+          </div>
+
+          <div className="divide-y divide-slate-200/70 dark:divide-slate-800/80">
+            {filterArticles(articles, articleFilterQuery, articleStageFilter).map(
+              (art) => (
+                <div
+                  key={art.id}
+                  className="py-3.5 first:pt-0 last:pb-0 flex flex-col md:flex-row md:items-center justify-between gap-3"
+                >
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="font-display font-semibold text-sm text-slate-900 dark:text-white">
+                      {art.headline}
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {art.summary}
+                    </p>
+                    <div className="text-[11px] text-slate-400 font-mono flex flex-wrap items-center gap-2 tabular-nums">
+                      <span>{art.id}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{art.category}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>Stage: {art.stage}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{art.wordCount} words</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 font-mono text-xs tabular-nums shrink-0">
+                    <div>
+                      <div className="text-emerald-600 dark:text-emerald-400">
+                        Fact-Check {art.factCheckScore}%
+                      </div>
+                      <div className="text-blue-600 dark:text-blue-400">
+                        SEO {art.seoScore}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      )}
+
+      {(pageId === 'article-editor' || pageId === 'seo-analysis') && (
+        <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5">
+          <h3 className="font-display font-semibold text-sm text-slate-900 dark:text-white pb-3 border-b border-slate-200 dark:border-slate-800">
+            Interactive Editorial Composer &amp; Live SEO Analyzer (Step 1 Local State)
+          </h3>
+
+          {editorSubmittedMessage && (
+            <div className="mt-4 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                {editorSubmittedMessage}
+              </span>
+              <button
+                type="button"
+                onClick={() => onNavigate('articles')}
+                className="font-semibold underline"
+              >
+                View in Articles →
+              </button>
+            </div>
+          )}
+
+          <form onSubmit={handleSaveDraft} className="mt-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <label
+                  htmlFor="editor-headline"
+                  className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1"
+                >
+                  Article Headline
+                </label>
+                <input
+                  id="editor-headline"
+                  type="text"
+                  value={draftHeadline}
+                  onChange={(e) => setDraftHeadline(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="editor-category"
+                  className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1"
+                >
+                  Sector Vertical
+                </label>
+                <select
+                  id="editor-category"
+                  value={draftCategory}
+                  onChange={(e) => setDraftCategory(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100"
+                >
+                  <option value="Semiconductors">Semiconductors</option>
+                  <option value="Energy Infrastructure">Energy Infrastructure</option>
+                  <option value="Cloud & Infrastructure">Cloud &amp; Infrastructure</option>
+                  <option value="Global Trade">Global Trade</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="editor-source-url"
+                className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1"
+              >
+                Primary Verification Source URL (HTTPS required)
+              </label>
+              <input
+                id="editor-source-url"
+                type="url"
+                value={draftSourceUrl}
+                onChange={(e) => setDraftSourceUrl(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="editor-body"
+                className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1"
+              >
+                Article Body Copy
+              </label>
+              <textarea
+                id="editor-body"
+                rows={5}
+                value={draftBody}
+                onChange={(e) => setDraftBody(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 leading-relaxed"
+              />
+            </div>
+
+            {!draftValidation.valid && (
+              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs text-rose-600 dark:text-rose-400 space-y-1">
+                {draftValidation.errors.map((err, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{err}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-4 font-mono text-xs text-slate-600 dark:text-slate-400 tabular-nums">
+                <span>Word Count: {draftValidation.wordCount}</span>
+                <span>·</span>
+                <span className="text-blue-600 dark:text-blue-400 font-semibold">
+                  Estimated SEO Score: {draftValidation.estimatedSeoScore}/100
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={!draftValidation.valid}
+                className="px-4 py-2 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white transition-colors"
+              >
+                Save Verified Draft to Queue
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {pageId === 'media-library' && (
+        <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5">
+          <h3 className="font-display font-semibold text-sm text-slate-900 dark:text-white pb-3 border-b border-slate-200 dark:border-slate-800">
+            Verified Editorial Media Library (Step 1 Generated Visual Assets)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
+            {[
+              {
+                id: 'media-1',
+                title: 'Cleanroom Wafer Lithography Bay — Dresden Fab',
+                src: GENERATED_ASSETS.semiconductorFab,
+                credit: 'Media Agent · 16:9 Hero Format · WCAG Alt Verified',
+              },
+              {
+                id: 'media-2',
+                title: 'North Sea HVDC Offshore Substation Platform',
+                src: GENERATED_ASSETS.energyGrid,
+                credit: 'Media Agent · 4:3 Editorial Card · WCAG Alt Verified',
+              },
+            ].map((asset) => (
+              <div
+                key={asset.id}
+                className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900"
+              >
+                <div className="aspect-video w-full bg-slate-800 relative overflow-hidden">
+                  {!mediaImgError[asset.id] ? (
+                    <img
+                      src={asset.src}
+                      alt={asset.title}
+                      referrerPolicy="no-referrer"
+                      onError={() =>
+                        setMediaImgError((prev) => ({ ...prev, [asset.id]: true }))
+                      }
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">
+                      {asset.title}
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <div className="font-display font-semibold text-sm text-slate-900 dark:text-white">
+                    {asset.title}
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">
+                    {asset.credit}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pageId === 'database-status' && (
+        <DatabaseStatusPanel
+          diagnostics={dbDiagnostics}
+          snapshot={dbSnapshot}
+          isProbing={isProbingDb}
+          onProbeDatabase={onProbeDatabase}
+        />
+      )}
+
+      {pageId === 'api-connections' && (
+        <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5 space-y-5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-display font-semibold text-base text-slate-900 dark:text-white">
+                  FastAPI Backend Foundation (/backend)
+                </h3>
+                <span className="font-mono text-xs font-semibold text-amber-600 dark:text-amber-400">
+                  {nexusApi.getDiagnostics().statusLabel}
+                </span>
+                <span className="font-mono text-xs text-blue-600 dark:text-blue-400">
+                  DEMO DATA FALLBACK
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Python 3.12+ · FastAPI · SQLAlchemy 2.x AsyncPG · Argon2id Auth · Strict RBAC &amp; CORS · 17 Production Endpoints
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onRefreshHealth}
+              disabled={isRefreshingHealth}
+              className="px-3.5 py-2 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white transition-colors self-start lg:self-auto"
+            >
+              {isRefreshingHealth ? 'Probing /api/system/health...' : 'Test FastAPI Health Endpoint'}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800">
+              <div className="text-slate-500 dark:text-slate-400">Backend Connection Status</div>
+              <div className="font-mono font-semibold text-sm text-amber-600 dark:text-amber-400 mt-1">
+                {nexusApi.getDiagnostics().statusLabel}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1 font-mono">
+                Env: VITE_FASTAPI_BASE_URL (Unconfigured)
+              </div>
+            </div>
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800">
+              <div className="text-slate-500 dark:text-slate-400">Authentication &amp; Security</div>
+              <div className="font-display font-semibold text-sm text-slate-900 dark:text-white mt-1">
+                Argon2id + HS256 JWT + RBAC
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1 font-mono">
+                CORS locked to ADMIN_ORIGIN · Secret log redaction
+              </div>
+            </div>
+            <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800">
+              <div className="text-slate-500 dark:text-slate-400">Database Driver &amp; Pooler</div>
+              <div className="font-display font-semibold text-sm text-slate-900 dark:text-white mt-1">
+                SQLAlchemy 2.x + asyncpg SSL
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1 font-mono">
+                Supabase Session Pooler compatible (statement_cache=0)
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-display font-semibold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+              Registered FastAPI Route Table ({nexusApi.getIntegrationMetadata().endpointCount} Routes)
+            </h4>
+            <div className="divide-y divide-slate-200/70 dark:divide-slate-800/80 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+              {nexusApi.getEndpointRegistry().map((ep) => (
+                <div
+                  key={ep.id}
+                  className="p-3 bg-white dark:bg-[#111827] flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs"
+                >
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2 font-mono">
+                      <span
+                        className={`font-bold ${
+                          ep.method === 'POST'
+                            ? 'text-violet-600 dark:text-violet-400'
+                            : 'text-emerald-600 dark:text-emerald-400'
+                        }`}
+                      >
+                        {ep.method}
+                      </span>
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                        {ep.path}
+                      </span>
+                      <span className="text-slate-400">·</span>
+                      <span className="text-[11px] text-slate-500">{ep.routerModule}</span>
+                    </div>
+                    <p className="text-slate-500 dark:text-slate-400">{ep.description}</p>
+                  </div>
+                  <div className="flex items-center gap-3 font-mono text-[11px] shrink-0">
+                    <span className="text-slate-600 dark:text-slate-300">{ep.authRequirement}</span>
+                    <span className="text-blue-600 dark:text-blue-400">{ep.responseSchema}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(pageId === 'workflow-manager' ||
+        pageId === 'scheduler' ||
+        pageId === 'social-accounts' ||
+        pageId === 'social-publishing' ||
+        pageId === 'youtube-publishing' ||
+        pageId === 'api-connections') && (
+        <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5 space-y-4">
+          <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-800 dark:text-amber-300">
+            <ServerOff className="w-4 h-4 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-semibold">
+                Honest Integration State: BACKEND NOT CONNECTED · DEMO DATA
+              </div>
+              <p className="mt-0.5 leading-relaxed">
+                The Python FastAPI backend (/backend) and Supabase PostgreSQL schema (/supabase) are built and ready for deployment. Until VITE_FASTAPI_BASE_URL and VITE_SUPABASE_URL are configured, the dashboard operates safely on labeled DEMO DATA.
+              </p>
+            </div>
+          </div>
+
+          <div className="divide-y divide-slate-200/70 dark:divide-slate-800/80">
+            {nexusApi.getIntegrationMetadata().plannedServices.map((svc) => (
+              <div
+                key={svc.id}
+                className="py-3.5 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  {svc.id === 'svc-supabase' ? (
+                    <Database className="w-4 h-4 text-blue-500 shrink-0" />
+                  ) : svc.id === 'svc-cloudflare' ? (
+                    <Globe className="w-4 h-4 text-violet-500 shrink-0" />
+                  ) : svc.id === 'svc-social-oauth' ? (
+                    <Share2 className="w-4 h-4 text-indigo-500 shrink-0" />
+                  ) : (
+                    <Link2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                  )}
+                  <div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-100">
+                      {svc.name}
+                    </div>
+                    <div className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                      {svc.plannedStep} · {svc.envVarName}
+                    </div>
+                  </div>
+                </div>
+                <div>{renderStatusIndicator(svc.status)}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <GitBranch className="w-3.5 h-3.5" />
+              <span>Pipeline DAG: Trend Scout → Research → Fact Checker → News Writer → SEO → Publishing</span>
+            </span>
+            <span className="font-mono flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" />
+              <span>Step 3 FastAPI Backend Foundation Ready</span>
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

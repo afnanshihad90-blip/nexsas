@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /sync.php
+Sitemap: https://YOUR-BLOG-DOMAIN/sitemap.xml
