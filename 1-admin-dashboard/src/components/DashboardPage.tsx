@@ -25,6 +25,7 @@ import {
   DatabaseLiveSnapshot,
   SupabaseEnvValidationResult,
 } from '../services/supabaseClient';
+import { nexusApi } from '../services/apiService';
 
 interface DashboardPageProps {
   kpis: KPIMetric[];
@@ -77,27 +78,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   isProbingDb,
   onProbeDatabase,
 }) => {
+  const apiDiagnostics = nexusApi.getDiagnostics();
+  const isBackendConnected = apiDiagnostics.isConfigured;
+
   return (
     <div className="space-y-6">
       {/* Top Architecture Disclosure Banner */}
-      <div className="rounded-xl bg-gradient-to-r from-blue-600/10 via-violet-600/10 to-transparent border border-blue-500/20 dark:border-blue-500/30 px-4 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-2">
+      <div className={`rounded-xl ${isBackendConnected ? 'bg-gradient-to-r from-emerald-600/10 via-blue-600/10 to-transparent border-emerald-500/30' : 'bg-gradient-to-r from-blue-600/10 via-violet-600/10 to-transparent border-blue-500/20'} border px-4 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-2`}>
         <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
           <span className="font-semibold text-slate-900 dark:text-white">
-            NEXUS MEDIA AI · Step 4 Multi-Agent Intelligence System:
+            NEXUS MEDIA AI · Multi-Agent Newsroom Operations:
           </span>{' '}
           FastAPI status:{' '}
-          <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">
-            BACKEND NOT CONNECTED
+          <span className={`font-mono font-semibold ${isBackendConnected ? 'text-emerald-500 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+            {isBackendConnected ? `CONNECTED (${apiDiagnostics.baseUrl})` : 'BACKEND NOT CONNECTED'}
           </span>{' '}
           · Database status:{' '}
-          <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">
-            {dbSnapshot.statusLabel}
+          <span className={`font-mono font-semibold ${isBackendConnected ? 'text-emerald-500 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+            {isBackendConnected ? 'CONNECTED (Supabase PostgreSQL via API)' : dbSnapshot.statusLabel}
           </span>
-          . Displaying clearly labeled{' '}
-          <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-            DEMO DATA
-          </span>{' '}
-          until backend &amp; database credentials are connected.
+          . Status:{' '}
+          <span className={`font-mono font-semibold ${isBackendConnected ? 'text-emerald-500 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'}`}>
+            {isBackendConnected ? 'LIVE PIPELINE ACTIVE' : 'DEMO DATA'}
+          </span>
         </div>
         <div className="flex flex-wrap items-center gap-3 shrink-0 self-start lg:self-auto">
           <button
