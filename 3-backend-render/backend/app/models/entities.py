@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 from uuid import UUID
+import uuid
 
 try:
     from sqlalchemy import Boolean, Date, DateTime, Integer, Numeric, String, Text, func
@@ -18,7 +19,7 @@ try:
     class AgentModel(Base):
         __tablename__ = "agents"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         slug: Mapped[str] = mapped_column(String, unique=True, nullable=False)
         name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
         role_title: Mapped[str] = mapped_column(String, nullable=False)
@@ -38,7 +39,7 @@ try:
     class AgentConfigModel(Base):
         __tablename__ = "agent_configs"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         agent_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), unique=True, nullable=False)
         provider_name: Mapped[str] = mapped_column(String, default="unconfigured", nullable=False)
         model_identifier: Mapped[str] = mapped_column(String, default="gemini-2.5-pro", nullable=False)
@@ -57,7 +58,7 @@ try:
     class WorkflowRunModel(Base):
         __tablename__ = "workflow_runs"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         idempotency_key: Mapped[str] = mapped_column(String, unique=True, nullable=False)
         orchestrator_agent_id: Mapped[Optional[UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
         topic_headline: Mapped[str] = mapped_column(Text, nullable=False)
@@ -75,7 +76,7 @@ try:
     class AgentTaskModel(Base):
         __tablename__ = "agent_tasks"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         agent_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
         workflow_run_id: Mapped[Optional[UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
         idempotency_key: Mapped[Optional[str]] = mapped_column(String, unique=True, nullable=True)
@@ -98,7 +99,7 @@ try:
     class AgentActivityModel(Base):
         __tablename__ = "agent_activity"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         agent_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
         task_id: Mapped[Optional[UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
         event_type: Mapped[str] = mapped_column(String, nullable=False)
@@ -111,7 +112,7 @@ try:
     class AgentExecutionLogModel(Base):
         __tablename__ = "agent_execution_logs"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         task_id: Mapped[Optional[UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
         workflow_run_id: Mapped[Optional[UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
         agent_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
@@ -131,7 +132,7 @@ try:
     class NewsCategoryModel(Base):
         __tablename__ = "news_categories"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         slug: Mapped[str] = mapped_column(String, unique=True, nullable=False)
         name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
         description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -148,7 +149,7 @@ try:
     class NewsSourceModel(Base):
         __tablename__ = "news_sources"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
         protocol: Mapped[str] = mapped_column(String, nullable=False)
         connector_type: Mapped[str] = mapped_column(String, default="rss_feed", nullable=False)
@@ -172,7 +173,7 @@ try:
     class StoryClusterModel(Base):
         __tablename__ = "story_clusters"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         story_code: Mapped[str] = mapped_column(String, unique=True, nullable=False)
         cluster_key: Mapped[str] = mapped_column("canonical_slug", String, unique=True, nullable=False)
         main_headline: Mapped[str] = mapped_column(Text, nullable=False)
@@ -190,7 +191,7 @@ try:
     class NewsItemModel(Base):
         __tablename__ = "news_items"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         source_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
         category_id: Mapped[Optional[UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
         story_cluster_id: Mapped[Optional[UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
@@ -220,7 +221,7 @@ try:
     class TrendScoreModel(Base):
         __tablename__ = "trend_scores"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         story_cluster_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), unique=True, nullable=False)
         trend_score: Mapped[float] = mapped_column(Numeric(5, 2), default=0.0, nullable=False)
         trend_level: Mapped[str] = mapped_column(String, default="Ignore", nullable=False)
@@ -238,7 +239,7 @@ try:
     class NewsClassificationModel(Base):
         __tablename__ = "news_classifications"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         news_item_id: Mapped[Optional[UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
         story_cluster_id: Mapped[Optional[UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
         primary_category_slug: Mapped[str] = mapped_column("primary_category", String, nullable=False)
@@ -252,7 +253,7 @@ try:
     class CollectionRunModel(Base):
         __tablename__ = "collection_runs"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         run_key: Mapped[str] = mapped_column("idempotency_key", String, unique=True, nullable=False)
         trigger_source: Mapped[str] = mapped_column(String, default="manual_operator", nullable=False)
         status: Mapped[str] = mapped_column(String, default="running", nullable=False)
@@ -270,7 +271,7 @@ try:
     class SourceFetchLogModel(Base):
         __tablename__ = "source_fetch_logs"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         collection_run_id: Mapped[Optional[UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
         source_id: Mapped[Optional[UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
         source_name: Mapped[str] = mapped_column(String, default="Unknown", nullable=False)
@@ -285,7 +286,7 @@ try:
     class ArticleModel(Base):
         __tablename__ = "articles"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         article_code: Mapped[str] = mapped_column(String, unique=True, nullable=False)
         slug: Mapped[str] = mapped_column(String, unique=True, nullable=False)
         headline: Mapped[str] = mapped_column(Text, nullable=False)
@@ -304,7 +305,7 @@ try:
     class PublishingJobModel(Base):
         __tablename__ = "publishing_jobs"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         article_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
         target_channel: Mapped[str] = mapped_column(String, nullable=False)
         stage: Mapped[str] = mapped_column(String, default="Scheduled", nullable=False)
@@ -317,7 +318,7 @@ try:
     class WebsiteTrafficModel(Base):
         __tablename__ = "website_traffic"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         recorded_date: Mapped[date] = mapped_column(Date, nullable=False)
         page_views: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
         unique_visitors: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -327,7 +328,7 @@ try:
     class RevenueReportModel(Base):
         __tablename__ = "revenue_reports"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         report_date: Mapped[date] = mapped_column(Date, nullable=False)
         impressions: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
         clicks: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -337,7 +338,7 @@ try:
     class SystemLogModel(Base):
         __tablename__ = "system_logs"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         subsystem: Mapped[str] = mapped_column(String, nullable=False)
         severity: Mapped[str] = mapped_column(String, default="info", nullable=False)
         message: Mapped[str] = mapped_column(Text, nullable=False)
@@ -347,7 +348,7 @@ try:
     class SystemSettingModel(Base):
         __tablename__ = "system_settings"
 
-        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
+        id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
         setting_key: Mapped[str] = mapped_column(String, unique=True, nullable=False)
         setting_value: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
         description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

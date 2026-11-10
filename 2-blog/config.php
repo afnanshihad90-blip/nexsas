@@ -6,12 +6,12 @@ define('DB_USER', '');
 define('DB_PASS', '');
 
 define('SITE_NAME', 'Nexus Media');
-define('SITE_URL', 'http://127.0.0.1:8080');
+define('SITE_URL', 'http://vibeshopbd.lovestoblog.com');
 define('SITE_TAGLINE', 'Business, World, AI & Science — explained.');
 
 define('NEXUS_API_SECRET', 'test-cross-language-signing-secret-key-12345');
-define('NEXUS_FEED_URL', 'http://127.0.0.1:10000/api/public/feed');
-define('SYNC_INTERVAL_SECONDS', 600);
+define('NEXUS_FEED_URL', 'https://nexsas-c3ne.onrender.com/api/public/feed');
+define('SYNC_INTERVAL_SECONDS', 60);
 
 define('ADSENSE_CLIENT', '');
 define('ADSENSE_SLOT_TOP', '');

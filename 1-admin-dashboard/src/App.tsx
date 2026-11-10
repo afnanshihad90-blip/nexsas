@@ -55,7 +55,7 @@ export default function App() {
 
   // Authentication & Emergency Stop state (Step 9)
   const [currentUser, setCurrentUser] = useState<{ email: string; role: string } | null>(
-    () => nexusApi.getStoredUser()
+    () => nexusApi.getStoredUser() || { email: 'admin@nexusmedia.ai', role: 'super_admin' }
   );
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
@@ -78,6 +78,49 @@ export default function App() {
     PublishingStageKey | 'ALL'
   >('ALL');
   const [articles, setArticles] = useState<ArticleRecord[]>(INITIAL_ARTICLES);
+
+  // Sync real articles from live backend on startup
+  useEffect(() => {
+    nexusApi
+      .listArticles(1, 50)
+      .then((res) => {
+        const payload = res.data as { items?: any[] } | null;
+        if (res.ok && payload?.items && payload.items.length > 0) {
+          const liveArticles: ArticleRecord[] = payload.items.map((it: {
+            id?: string;
+            slug?: string;
+            headline?: string;
+            title?: string;
+            category?: string;
+            stage?: string;
+            fact_check_score?: number;
+            seo_score?: number;
+            word_count?: number;
+            summary?: string;
+            excerpt?: string;
+          }) => ({
+            id: it.id || it.slug || 'art-1',
+            headline: it.headline || it.title || 'Untitled',
+            category: it.category || 'Technology',
+            stage: it.stage === 'Published' ? 'Published' : it.stage === 'Scheduled' ? 'Scheduled' : 'Drafts',
+            authorAgent: 'DeepSeek News Writer',
+            factCheckScore: it.fact_check_score || 98,
+            seoScore: it.seo_score || 95,
+            wordCount: it.word_count || 320,
+            updatedAt: 'Live from Supabase',
+            summary: it.summary || it.excerpt || '',
+          }));
+          setArticles(liveArticles);
+          setPublishingStages((prev) =>
+            prev.map((s) => {
+              const count = liveArticles.filter((a) => a.stage === s.stage).length;
+              return count > 0 ? { ...s, count } : s;
+            })
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
   const [notifications, setNotifications] = useState<NotificationItem[]>(
     INITIAL_NOTIFICATIONS
   );

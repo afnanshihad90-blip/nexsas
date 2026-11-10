@@ -317,12 +317,13 @@ async def create_article_service(
         raise DatabaseUnavailableError(
             "Cannot persist new article because Supabase PostgreSQL is not configured."
         )
-    import secrets
+    import secrets, uuid
     body = str(payload.get("body_markdown", ""))
     now = datetime.now(timezone.utc)
     stage = payload.get("stage") or STATUS_TO_STAGE.get(payload.get("status", ""), "Drafts")
     is_pub = bool(payload.get("is_public", False) or (stage == "Published"))
     article = ArticleModel(
+        id=uuid.uuid4(),
         article_code=f"NX-{secrets.token_hex(3).upper()}",
         slug=payload["slug"],
         headline=payload.get("title") or payload.get("headline", "Untitled Story"),

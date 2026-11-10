@@ -161,7 +161,7 @@ async def run_autonomous_editorial_pipeline(
     # 6. Publishing Mode Decision
     mode = (override_mode or settings.PUBLISHING_MODE or "manual").strip().lower()
     auto_eligible = bool(s9_result.get("auto_published", False)) and (mode == "auto")
-    initial_stage = "Scheduled" if auto_eligible else "Awaiting Approval"
+    initial_stage = "Published" if auto_eligible else "Awaiting Approval"
 
     # 7. Database Persistence
     article_record: Optional[Dict[str, Any]] = None
@@ -175,11 +175,12 @@ async def run_autonomous_editorial_pipeline(
                 "body_markdown": body_markdown,
                 "excerpt": s6_result.get("introduction", headline),
                 "stage": initial_stage,
-                "status": "awaiting_approval" if initial_stage == "Awaiting Approval" else "scheduled",
+                "status": "published" if auto_eligible else "awaiting_approval",
                 "fact_check_score": quality_total,
                 "seo_score": 95,
                 "primary_source_url": sources[0].get("url") if sources else None,
-                "is_public": False,
+                "is_public": True if auto_eligible else False,
+                "published_at": datetime.now(timezone.utc) if auto_eligible else None,
             }
             article_record = await create_article_service(session, article_payload)
 

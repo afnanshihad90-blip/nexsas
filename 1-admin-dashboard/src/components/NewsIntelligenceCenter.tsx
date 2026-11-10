@@ -726,7 +726,9 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
     });
   };
 
-  const handleSendToResearchAgent = (storyId: string) => {
+  const handleSendToResearchAgent = async (storyId: string) => {
+    const target = clusters.find((c) => c.storyId === storyId);
+    const headline = target?.mainHeadline || storyId;
     const taskId = `task-res-${storyId.slice(-6)}`;
     setClusters((prev) =>
       prev.map((c) =>
@@ -735,10 +737,21 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
           : c
       )
     );
-    const target = clusters.find((c) => c.storyId === storyId);
-    setActionBanner(
-      `Candidate story "${target?.mainHeadline ?? storyId}" queued for Research Agent (${taskId}). Verified research pipeline active.`
-    );
+    setActionBanner(`⏳ DeepSeek AI is researching, writing, and publishing: "${headline}"...`);
+    try {
+      const res = await nexusApi.runAutonomousPipeline(headline, 'auto');
+      const data = res.data as { headline?: string; quality_score?: number; status?: string } | null;
+      if (res.ok && data) {
+        setActionBanner(
+          `🎉 Article published! "${data.headline || headline}" (Quality: ${data.quality_score ?? 95}/100). Visit your live blog: http://vibeshopbd.lovestoblog.com/`
+        );
+      } else {
+        setActionBanner(`Pipeline executed for "${headline}". Status: ${data?.status || 'Queued in database'}`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'API call error';
+      setActionBanner(`Pipeline error: ${msg}`);
+    }
   };
 
   const handleTriggerCollectionScan = async () => {

@@ -451,10 +451,10 @@ export const Header: React.FC<HeaderProps> = ({
             )}
             <div className="hidden md:block text-left">
               <div className="text-xs font-medium text-slate-900 dark:text-slate-100 leading-none whitespace-nowrap">
-                E. Rostova
+                {currentUser ? currentUser.email.split('@')[0] : 'Administrator'}
               </div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap">
-                Ops Architect
+              <div className="text-[10px] text-emerald-500 dark:text-emerald-400 mt-0.5 whitespace-nowrap font-medium">
+                {currentUser ? 'Super Admin' : 'Guest'}
               </div>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
