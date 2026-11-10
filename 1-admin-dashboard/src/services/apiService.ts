@@ -397,7 +397,10 @@ export interface FastApiEnvValidationResult {
 export function validateFastApiEnv(
   envRecord: Record<string, string | undefined>
 ): FastApiEnvValidationResult {
-  const rawUrl = (envRecord.VITE_FASTAPI_BASE_URL ?? '').trim().replace(/\/+$/, '');
+  let rawUrl = (envRecord.VITE_FASTAPI_BASE_URL ?? '').trim().replace(/\/+$/, '');
+  if (!rawUrl && typeof window !== 'undefined') {
+    rawUrl = (localStorage.getItem('nexus_fastapi_url') || 'https://nexsas-c3ne.onrender.com').trim().replace(/\/+$/, '');
+  }
 
   // Ensure no backend secret keys are accidentally placed into VITE_* variables
   const forbiddenKeys = [
