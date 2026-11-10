@@ -75,7 +75,7 @@ def create_app() -> FastAPI:
         redoc_url="/api/redoc" if settings.APP_ENV != "production" else None,
     )
 
-    # 1. Strict CORS Policy restricted to configured dashboard origins
+    # 1. Strict CORS Policy allowing dashboard origins
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_cors_origins_list,

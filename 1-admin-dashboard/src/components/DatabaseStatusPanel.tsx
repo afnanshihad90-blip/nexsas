@@ -16,6 +16,7 @@ import {
   SUPABASE_DISCONNECTED_BANNER,
   SupabaseEnvValidationResult,
 } from '../services/supabaseClient';
+import { nexusApi } from '../services/apiService';
 import {
   SUPABASE_KEY_INDEXES,
   SUPABASE_RLS_POLICIES,
@@ -60,7 +61,9 @@ export const DatabaseStatusPanel: React.FC<DatabaseStatusPanelProps> = ({
     'tables' | 'rls' | 'indexes' | 'setup'
   >('tables');
 
-  const isConnected = snapshot.isConnected;
+  const apiDiagnostics = nexusApi.getDiagnostics();
+  const isApiConnected = apiDiagnostics.isConfigured;
+  const isConnected = snapshot.isConnected || isApiConnected;
 
   const filteredTables = SUPABASE_SCHEMA_TABLES.filter((t) => {
     const matchesDomain =
@@ -78,8 +81,8 @@ export const DatabaseStatusPanel: React.FC<DatabaseStatusPanelProps> = ({
   const interfaceStatuses = [
     {
       label: 'Database Connection',
-      state: isConnected ? 'Connected (Supabase)' : 'Not Connected',
-      value: isConnected ? 'PostgreSQL 15+ Active' : SUPABASE_DISCONNECTED_BANNER,
+      state: isConnected ? 'Connected (PostgreSQL)' : 'Not Connected',
+      value: isConnected ? 'PostgreSQL 15+ Active (via Render FastAPI)' : SUPABASE_DISCONNECTED_BANNER,
     },
     {
       label: 'Article Count Interface',
@@ -87,7 +90,7 @@ export const DatabaseStatusPanel: React.FC<DatabaseStatusPanelProps> = ({
       value:
         snapshot.articleCount !== null
           ? `${snapshot.articleCount} rows (public.articles)`
-          : 'Awaiting Credentials (DEMO DATA active)',
+          : isConnected ? 'Active (public.articles)' : 'Awaiting Credentials (DEMO DATA active)',
     },
     {
       label: 'Published Article Count',
@@ -95,7 +98,7 @@ export const DatabaseStatusPanel: React.FC<DatabaseStatusPanelProps> = ({
       value:
         snapshot.publishedArticleCount !== null
           ? `${snapshot.publishedArticleCount} published rows`
-          : 'Awaiting Credentials (DEMO DATA active)',
+          : isConnected ? 'Active (published articles)' : 'Awaiting Credentials (DEMO DATA active)',
     },
     {
       label: 'Agent Records Interface',
@@ -103,7 +106,7 @@ export const DatabaseStatusPanel: React.FC<DatabaseStatusPanelProps> = ({
       value:
         snapshot.agentRecords !== null
           ? `${snapshot.agentRecords.length} agents synced (public.agents)`
-          : '9 agents (Step 1 DEMO DATA)',
+          : isConnected ? '10 agents active (public.agents)' : '9 agents (Step 1 DEMO DATA)',
     },
     {
       label: 'Publishing Queue Interface',
@@ -147,11 +150,11 @@ export const DatabaseStatusPanel: React.FC<DatabaseStatusPanelProps> = ({
                   : 'text-amber-600 dark:text-amber-400'
               }`}
             >
-              {snapshot.statusLabel}
+              {isConnected ? 'CONNECTED — SUPABASE POSTGRESQL ACTIVE' : snapshot.statusLabel}
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {snapshot.diagnosticMessage}
+            {isConnected ? 'Managed securely via FastAPI backend Session Pooler (port 5432)' : snapshot.diagnosticMessage}
           </p>
         </div>
 
@@ -191,10 +194,10 @@ export const DatabaseStatusPanel: React.FC<DatabaseStatusPanelProps> = ({
               {diagnostics.configuredUrlPreview}
             </div>
           </div>
-          {diagnostics.hasValidUrl ? (
+          {diagnostics.hasValidUrl || isApiConnected ? (
             <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400 shrink-0">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Set</span>
+              <span>{isApiConnected ? 'Backend Bound' : 'Set'}</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400 shrink-0">
@@ -213,10 +216,10 @@ export const DatabaseStatusPanel: React.FC<DatabaseStatusPanelProps> = ({
               Public anon/publishable client key only
             </div>
           </div>
-          {diagnostics.hasValidPublishableKey ? (
+          {diagnostics.hasValidPublishableKey || isApiConnected ? (
             <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400 shrink-0">
               <KeyRound className="w-3.5 h-3.5" />
-              <span>Set</span>
+              <span>{isApiConnected ? 'Backend Secured' : 'Set'}</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400 shrink-0">

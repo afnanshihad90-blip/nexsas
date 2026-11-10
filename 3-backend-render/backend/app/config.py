@@ -105,8 +105,10 @@ class AppSettings(BaseSettings):  # type: ignore[misc]
                 cleaned = item.strip()
                 if cleaned and cleaned != "*":
                     origins.add(cleaned)
-        if not origins:
-            origins.add("http://localhost:3000")
+        # Always allow user's deployed InfinityFree dashboard domain
+        origins.add("http://vibeshopbd.lovestoblog.com")
+        origins.add("https://vibeshopbd.lovestoblog.com")
+        origins.add("http://localhost:3000")
         return sorted(origins)
 
     def redacted_summary(self) -> dict:
