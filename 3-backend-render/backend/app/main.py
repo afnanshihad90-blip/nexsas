@@ -134,6 +134,15 @@ def create_app() -> FastAPI:
     application.include_router(logs.router)
     application.include_router(blog.router)
 
+    @application.get("/")
+    async def root():
+        return {
+            "application": "NEXUS MEDIA AI",
+            "status": "online",
+            "health_check": "/api/system/health",
+            "message": "NEXUS MEDIA AI Autonomous News Intelligence API is running.",
+        }
+
     return application
 
 
