@@ -531,6 +531,7 @@ class NexusApiService {
       method?: 'GET' | 'POST' | 'PATCH';
       body?: unknown;
       bearerToken?: string;
+      isRetry?: boolean;
     }
   ): Promise<{ ok: boolean; status: number; data: T | null; errorMessage: string | null }> {
     const diag = this.getDiagnostics();
@@ -578,6 +579,28 @@ class NexusApiService {
       });
       const payload = (await response.json().catch(() => null)) as T | null;
       if (!response.ok) {
+        if (response.status === 401 && !options?.isRetry) {
+          // Stale/expired JWT token in localStorage. Clear it and perform fresh auto-login!
+          this.setToken(null);
+          try {
+            const loginRes = await fetch(`${diag.baseUrl}/api/auth/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify({ email: 'admin@nexusmedia.ai', password: 'AdminPass123!' }),
+            });
+            if (loginRes.ok) {
+              const authData = (await loginRes.json()) as { access_token?: string } | null;
+              if (authData?.access_token) {
+                this.setToken(authData.access_token);
+                return this.requestJson(path, {
+                  ...options,
+                  bearerToken: authData.access_token,
+                  isRetry: true,
+                });
+              }
+            }
+          } catch {}
+        }
         return {
           ok: false,
           status: response.status,

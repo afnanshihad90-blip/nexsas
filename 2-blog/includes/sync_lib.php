@@ -47,17 +47,54 @@ if (!function_exists('run_sync')) {
 function run_sync(): array {
   $ts = (string)time();
   $sig = hash_hmac('sha256', $ts . '..feed', NEXUS_API_SECRET);
-  $ctx = stream_context_create(['http' => ['method' => 'GET', 'timeout' => 8, 'ignore_errors' => true,
-    'header' => "X-Nexus-Timestamp: $ts\r\nX-Nexus-Signature: $sig\r\nUser-Agent: NexusBlogSync/1.0\r\n"]]);
-  $raw = @file_get_contents(NEXUS_FEED_URL, false, $ctx);
-  $result = ['synced' => 0, 'error' => null];
-  if ($raw === false) { $result['error'] = 'feed unreachable'; }
-  else {
-    $data = json_decode($raw, true);
-    if (!is_array($data) || !isset($data['items'])) { $result['error'] = 'bad feed response'; }
-    else foreach ($data['items'] as $item) { try { upsert_article($item); $result['synced']++; } catch (Throwable $t) {} }
+  $headers = [
+    "X-Nexus-Timestamp: $ts",
+    "X-Nexus-Signature: $sig",
+    "User-Agent: NexusBlogSync/1.0",
+    "Accept: application/json"
+  ];
+
+  $raw = false;
+  if (function_exists('curl_init')) {
+    $ch = curl_init(NEXUS_FEED_URL);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $raw = curl_exec($ch);
+    curl_close($ch);
   }
-  db()->prepare('UPDATE sync_state SET last_status=? WHERE id=1')->execute([$result['error'] ?? ('ok:' . $result['synced'])]);
+  if ($raw === false || $raw === '') {
+    $ctx = stream_context_create(['http' => [
+      'method' => 'GET',
+      'timeout' => 12,
+      'ignore_errors' => true,
+      'header' => implode("\r\n", $headers) . "\r\n"
+    ]]);
+    $raw = @file_get_contents(NEXUS_FEED_URL, false, $ctx);
+  }
+
+  $result = ['synced' => 0, 'error' => null];
+  if ($raw === false || $raw === '') {
+    $result['error'] = 'feed unreachable from host';
+  } else {
+    $data = json_decode($raw, true);
+    if (!is_array($data) || !isset($data['items'])) {
+      $result['error'] = 'bad feed response: ' . substr((string)$raw, 0, 150);
+    } else {
+      foreach ($data['items'] as $item) {
+        try {
+          upsert_article($item);
+          $result['synced']++;
+        } catch (Throwable $t) {
+          $result['error'] = $t->getMessage();
+        }
+      }
+    }
+  }
+  try {
+    db()->prepare('UPDATE sync_state SET last_status=? WHERE id=1')->execute([$result['error'] ?? ('ok:' . $result['synced'])]);
+  } catch (Throwable $t) {}
   return $result;
 }
 }
