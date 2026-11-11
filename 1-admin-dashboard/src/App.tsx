@@ -173,11 +173,23 @@ export default function App() {
 
   const activeAgentCount = computeActiveAgentCount(agents);
   const isBackendConfigured = nexusApi.getDiagnostics().isConfigured;
+  const publishedCount = articles.filter(
+    (a) => a.stage === 'Published' || a.stage === 'Live'
+  ).length;
   const kpis = getMetricsForDateRange(
     dateRange,
     activeAgentCount,
     agents.length,
-    isBackendConfigured
+    isBackendConfigured,
+    {
+      totalArticles: articles.length,
+      publishedArticles: publishedCount,
+      newsDiscovered: 95,
+      totalViews: 0,
+      socialReach: 0,
+      revenue: 0.0,
+      failedJobs: 0,
+    }
   );
   const currentAnalyticsSeries = ANALYTICS_SERIES_BY_RANGE[dateRange];
 

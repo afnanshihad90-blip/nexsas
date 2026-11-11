@@ -549,19 +549,27 @@ function mapBackendStoryToClusterItem(
     classificationReasoning: `Classified under '${catName}' based on live wire signals.`,
     needsReview: false,
     secondaryTags: raw.secondaryTags || [catName, 'Live Wire', 'Breaking'],
-    relatedSources: raw.relatedSources || [
-      {
-        sourceId: 'src-live-wire',
-        sourceName: 'Global Live Wire Feed',
-        url:
-          raw.canonicalUrl ||
-          raw.canonical_url ||
-          raw.original_article_url ||
-          'https://www.bbc.com/news',
-        isSyndicated: false,
-        reliabilityScore: 95,
-      },
-    ],
+    relatedSources: (Array.isArray(raw.related_sources) && raw.related_sources.length > 0)
+      ? raw.related_sources.map((s: any) => ({
+          sourceId: s.sourceId || s.source_id || 'src-wire',
+          sourceName: s.sourceName || s.source_name || raw.source_name || 'Live Wire',
+          url: s.url || raw.canonical_url || raw.canonicalUrl || 'https://www.bbc.com/news',
+          isSyndicated: Boolean(s.isSyndicated || s.is_syndicated),
+          reliabilityScore: Number(s.reliabilityScore || s.reliability_score || 95),
+        }))
+      : [
+          {
+            sourceId: 'src-live-wire',
+            sourceName: raw.source_name || 'Live Wire Source',
+            url:
+              raw.canonicalUrl ||
+              raw.canonical_url ||
+              raw.original_article_url ||
+              'https://www.bbc.com/news',
+            isSyndicated: false,
+            reliabilityScore: 95,
+          },
+        ],
     scoreBreakdown: raw.scoreBreakdown || {
       sourceReliability: 95,
       popularityAndCoverage: 88,
@@ -643,6 +651,7 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
     imageUrl?: string;
   } | null>(null);
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+  const [sortBy, setSortBy] = useState<'latest' | 'score'>('latest');
 
   const backendDiag = nexusApi.getDiagnostics();
 
@@ -692,14 +701,21 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
           c.secondaryTags.some((t) => t.toLowerCase().includes(q))
         );
       })
-      .sort((a, b) => b.trendScore - a.trendScore);
+      .sort((a, b) => {
+        if (sortBy === 'latest') {
+          const tA = new Date(a.firstDiscoveredTime).getTime() || 0;
+          const tB = new Date(b.firstDiscoveredTime).getTime() || 0;
+          if (tB !== tA) return tB - tA;
+        }
+        return b.trendScore - a.trendScore;
+      });
 
     // Safety fallback: if filters return 0 items but clusters exist, display clusters
     if (list.length === 0 && clusters.length > 0 && selectedCategorySlug === 'ALL' && !searchQuery.trim()) {
       return clusters;
     }
     return list;
-  }, [clusters, enabledCategorySlugs, selectedCategorySlug, minTrendScoreFilter, searchQuery]);
+  }, [clusters, enabledCategorySlugs, selectedCategorySlug, minTrendScoreFilter, searchQuery, sortBy]);
 
   const activeCluster = useMemo(
     () =>
@@ -1242,6 +1258,16 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
                 <option value={80}>High Priority Only (80–100)</option>
                 <option value={60}>Normal &amp; High (60–100)</option>
                 <option value={40}>Low &amp; Above (40–100)</option>
+              </select>
+
+              <select
+                aria-label="Sort wire stories"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'latest' | 'score')}
+                className="px-3 py-1.5 rounded-lg text-xs bg-slate-50 dark:bg-slate-900 border border-blue-500/40 dark:border-blue-500/40 text-blue-600 dark:text-blue-400 font-semibold"
+              >
+                <option value="latest">⚡ Newest Wire First (Breaking)</option>
+                <option value="score">🔥 Highest Trend Score</option>
               </select>
             </div>
 

@@ -263,6 +263,13 @@ class TrendingStorySchema(BaseModel):
     related_source_ids: List[str] = Field(default_factory=list)
     related_news_ids: List[str] = Field(default_factory=list)
     sent_to_research: bool = False
+    canonical_url: Optional[str] = None
+    canonicalUrl: Optional[str] = None
+    source_name: Optional[str] = None
+    summary: Optional[str] = None
+    short_metadata_description: Optional[str] = None
+    image_url: Optional[str] = None
+    related_sources: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class TrendingListResponse(BaseModel):

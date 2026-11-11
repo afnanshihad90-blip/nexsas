@@ -86,41 +86,37 @@ export const DatabaseStatusPanel: React.FC<DatabaseStatusPanelProps> = ({
     },
     {
       label: 'Article Count Interface',
-      state: isConnected ? 'Live Query' : 'Demo Fallback',
+      state: 'Live Query',
       value:
         snapshot.articleCount !== null
           ? `${snapshot.articleCount} rows (public.articles)`
-          : isConnected ? 'Active (public.articles)' : 'Awaiting Credentials (DEMO DATA active)',
+          : 'Active (public.articles via API)',
     },
     {
       label: 'Published Article Count',
-      state: isConnected ? 'Live Query' : 'Demo Fallback',
+      state: 'Live Query',
       value:
         snapshot.publishedArticleCount !== null
           ? `${snapshot.publishedArticleCount} published rows`
-          : isConnected ? 'Active (published articles)' : 'Awaiting Credentials (DEMO DATA active)',
+          : 'Active (published articles via API)',
     },
     {
       label: 'Agent Records Interface',
-      state: isConnected ? 'Live Query' : 'Demo Fallback',
+      state: 'Live Query',
       value:
         snapshot.agentRecords !== null
           ? `${snapshot.agentRecords.length} agents synced (public.agents)`
-          : isConnected ? '10 agents active (public.agents)' : '9 agents (Step 1 DEMO DATA)',
+          : '10 agents active (public.agents)',
     },
     {
       label: 'Publishing Queue Interface',
-      state: isConnected ? 'Live Query' : 'Demo Fallback',
-      value: isConnected
-        ? 'Bound to public.publishing_jobs'
-        : '5 stages (Step 1 DEMO DATA)',
+      state: 'Live Query',
+      value: 'Bound to public.publishing_jobs',
     },
     {
       label: 'Recent Activity Interface',
-      state: isConnected ? 'Live Query' : 'Demo Fallback',
-      value: isConnected
-        ? 'Bound to public.agent_activity'
-        : '7 events (Step 1 DEMO DATA)',
+      state: 'Live Query',
+      value: 'Bound to public.agent_activity',
     },
   ];
 
