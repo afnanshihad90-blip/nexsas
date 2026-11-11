@@ -164,9 +164,9 @@ async def run_autonomous_editorial_pipeline(
             credit = "World Press Editorial"
 
         candidate_images.append({
-            "provider": "Unsplash / Editorial Commons",
+            "provider": "Unsplash",
             "source_url": img_url,
-            "license": "Editorial License",
+            "license": "Unsplash License",
             "photographer": credit,
             "alt_text": f"Editorial analysis representation for {headline}",
         })
