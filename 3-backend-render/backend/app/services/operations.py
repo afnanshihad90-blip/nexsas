@@ -239,16 +239,24 @@ STATUS_TO_STAGE = {
 def _article_to_dict(r: Any) -> Dict[str, Any]:
     """Map the real `articles` columns (headline/summary/stage) to the API schema."""
     words = int(r.word_count or 0)
+    body = getattr(r, "body_markdown", None) or ""
     return {
         "id": str(r.id),
         "slug": r.slug,
         "title": r.headline,
+        "headline": r.headline,
         "subtitle": None,
         "excerpt": r.summary,
+        "summary": r.summary,
+        "body_markdown": body,
+        "content": body,
+        "category": "technology",
         "status": STAGE_TO_STATUS.get(r.stage, str(r.stage).lower()),
+        "stage": r.stage,
         "word_count": words,
         "reading_time_minutes": max(1, round(words / 220)),
         "is_public": bool(r.is_public),
+        "primary_source_url": getattr(r, "primary_source_url", None),
         "published_at": r.published_at,
         "created_at": r.created_at,
         "updated_at": r.updated_at,

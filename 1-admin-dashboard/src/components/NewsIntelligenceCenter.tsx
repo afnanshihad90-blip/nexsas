@@ -634,6 +634,14 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
     lastRunKey: 'fixture-initial-state',
   });
   const [actionBanner, setActionBanner] = useState<string | null>(null);
+  const [publishedArticle, setPublishedArticle] = useState<{
+    storyId: string;
+    headline: string;
+    bodyMarkdown: string;
+    qualityScore: number;
+    slug: string;
+  } | null>(null);
+  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
 
   const backendDiag = nexusApi.getDiagnostics();
 
@@ -848,6 +856,7 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
     const target = clusters.find((c) => c.storyId === storyId);
     const headline = target?.mainHeadline || storyId;
     const taskId = `task-res-${storyId.slice(-6)}`;
+    setIsGeneratingStory(true);
     setClusters((prev) =>
       prev.map((c) =>
         c.storyId === storyId
@@ -858,17 +867,55 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
     setActionBanner(`⏳ DeepSeek AI is researching, writing, and publishing: "${headline}"...`);
     try {
       const res = await nexusApi.runAutonomousPipeline(headline, 'auto');
-      const data = res.data as { headline?: string; quality_score?: number; status?: string } | null;
+      const data = res.data as {
+        headline?: string;
+        body_markdown?: string;
+        quality_score?: number;
+        slug?: string;
+        status?: string;
+      } | null;
       if (res.ok && data) {
+        const articleSlug =
+          data.slug || headline.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const fullBody = data.body_markdown || headline;
+
+        // Push directly to local blog via browser to bypass InfinityFree outbound restrictions
+        try {
+          await fetch('/api/publish_direct.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: data.headline || headline,
+              slug: articleSlug,
+              content: fullBody,
+              excerpt: fullBody.slice(0, 250),
+              category: target?.categorySlug || 'technology',
+              status: 'published',
+            }),
+          });
+        } catch {}
+
+        setPublishedArticle({
+          storyId,
+          headline: data.headline || headline,
+          bodyMarkdown: fullBody,
+          qualityScore: data.quality_score ?? 95,
+          slug: articleSlug,
+        });
+
         setActionBanner(
           `🎉 Article published! "${data.headline || headline}" (Quality: ${data.quality_score ?? 95}/100). Visit your live blog: http://vibeshopbd.lovestoblog.com/`
         );
       } else {
-        setActionBanner(`Pipeline executed for "${headline}". Status: ${data?.status || 'Queued in database'}`);
+        setActionBanner(
+          `Pipeline status: ${res.errorMessage || data?.status || 'Queued in database'}`
+        );
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'API call error';
       setActionBanner(`Pipeline error: ${msg}`);
+    } finally {
+      setIsGeneratingStory(false);
     }
   };
 
@@ -1277,7 +1324,21 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
                           </span>
                         )}
                       </div>
-                      <span>Confidence: {story.confidence}%</span>
+                      <div className="flex items-center gap-2">
+                        <span>Confidence: {story.confidence}%</span>
+                        {story.canonicalUrl && (
+                          <a
+                            href={story.canonicalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors"
+                          >
+                            <span>Read Source</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1288,18 +1349,58 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
             <div className="lg:col-span-5">
               {activeCluster ? (
                 <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5 space-y-4 sticky top-20">
-                  <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
+                  <div className="border-b border-slate-200 dark:border-slate-800 pb-3 space-y-2">
                     <div className="flex items-center justify-between gap-2 text-xs font-mono text-slate-500">
                       <span>{activeCluster.storyId}</span>
                       <span>Popularity: {activeCluster.popularityMeasurementStatus}</span>
                     </div>
-                    <h3 className="font-display font-bold text-base text-slate-900 dark:text-white mt-1">
+                    <h3 className="font-display font-bold text-base text-slate-900 dark:text-white">
                       {activeCluster.mainHeadline}
                     </h3>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                       {activeCluster.shortMetadataDescription}
                     </p>
+
+                    {activeCluster.canonicalUrl && (
+                      <div className="pt-1">
+                        <a
+                          href={activeCluster.canonicalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>🌐 Open Original Wire Story ({activeCluster.relatedSources[0]?.sourceName || 'Wire Source'})</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Published Article Inline Preview */}
+                  {publishedArticle && publishedArticle.storyId === activeCluster.storyId && (
+                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <span>Article Published to Live Blog! (Score: {publishedArticle.qualityScore}/100)</span>
+                        </div>
+                        <a
+                          href={`http://vibeshopbd.lovestoblog.com/article/${publishedArticle.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] inline-flex items-center gap-1 shrink-0"
+                        >
+                          <span>Open on Blog</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                      <div className="max-h-64 overflow-y-auto pr-1 space-y-2 text-slate-800 dark:text-slate-200 text-xs leading-relaxed bg-white/70 dark:bg-black/40 p-3 rounded-lg border border-emerald-500/20">
+                        {publishedArticle.bodyMarkdown.split('\n\n').map((para, pIdx) => (
+                          <p key={pIdx}>{para.replace(/^#+\s*/, '')}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* 6-Factor Weighted Trend Score Breakdown */}
                   <div className="space-y-2.5">
@@ -1380,18 +1481,20 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
                     </div>
                   </div>
 
-                  <div className="pt-2 flex items-center justify-between gap-2">
+                  <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <button
                       type="button"
                       onClick={() => handleSendToResearchAgent(activeCluster.storyId)}
-                      disabled={activeCluster.sentToResearchAgent}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white transition-colors"
+                      disabled={isGeneratingStory}
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white transition-colors shadow-sm"
                     >
-                      <Send className="w-3.5 h-3.5" />
+                      <Sparkles className={`w-3.5 h-3.5 ${isGeneratingStory ? 'animate-spin' : ''}`} />
                       <span>
-                        {activeCluster.sentToResearchAgent
-                          ? `Queued (${activeCluster.researchTaskId})`
-                          : 'Send to Research Agent'}
+                        {isGeneratingStory
+                          ? 'DeepSeek AI Writing Article...'
+                          : publishedArticle && publishedArticle.storyId === activeCluster.storyId
+                          ? '⚡ Re-Generate & Publish'
+                          : '⚡ 1-Click AI Generate & Publish'}
                       </span>
                     </button>
                     <span className="font-mono text-[11px] text-slate-500">

@@ -393,8 +393,33 @@ class RSSFeedConnector(BaseNewsSourceConnector):
 
     def fetch(self, page: int = 1, page_size: int = 20) -> List[FetchedRawItem]:
         xml_payload = self._execute_transport_with_retries(page=page, page_size=page_size)
+        trimmed = xml_payload.strip()
+        if trimmed.startswith("{") or trimmed.startswith("["):
+            try:
+                data = json.loads(trimmed)
+                articles = data.get("articles", []) if isinstance(data, dict) else []
+                items: List[FetchedRawItem] = []
+                for art in articles:
+                    title = str(art.get("title") or "").strip()
+                    url = str(art.get("url") or "").strip()
+                    if title and url:
+                        items.append(
+                            FetchedRawItem(
+                                external_guid=str(art.get("url_mobile") or url),
+                                headline=title,
+                                url=url,
+                                published_at=str(art.get("seendate") or "") or None,
+                                author=str(art.get("domain") or "") or None,
+                                summary=str(art.get("snippet") or art.get("title") or ""),
+                                language=str(art.get("language") or "en")[:8],
+                            )
+                        )
+                return items
+            except Exception:
+                pass
+
         try:
-            root = ET.fromstring(xml_payload.strip())
+            root = ET.fromstring(trimmed)
         except ET.ParseError as exc:
             self._record_error(
                 "INVALID_RSS_XML",

@@ -315,12 +315,19 @@ class ArticleItemSchema(BaseModel):
     id: str
     slug: str
     title: str
+    headline: Optional[str] = None
     subtitle: Optional[str] = None
     excerpt: Optional[str] = None
+    summary: Optional[str] = None
+    body_markdown: Optional[str] = None
+    content: Optional[str] = None
+    category: Optional[str] = "technology"
     status: str
+    stage: Optional[str] = None
     word_count: int = 0
     reading_time_minutes: int = 1
     is_public: bool = False
+    primary_source_url: Optional[str] = None
     published_at: Optional[Any] = None
     created_at: Optional[Any] = None
     updated_at: Optional[Any] = None
