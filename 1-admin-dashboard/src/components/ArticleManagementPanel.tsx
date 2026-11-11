@@ -36,35 +36,7 @@ export const ArticleManagementPanel: React.FC<ArticleManagementPanelProps> = ({
       if (res.ok && res.data && (res.data as any).items?.length > 0) {
         setArticles((res.data as any).items);
       } else {
-        // Fallback to initial articles if database/backend has no rows or is offline
-        setArticles(
-          initialArticles.length > 0
-            ? initialArticles
-            : [
-                {
-                  id: 'demo-art-1',
-                  title: 'Breakthrough Quantum Computing Benchmark Validated',
-                  headline: 'Breakthrough Quantum Computing Benchmark Validated',
-                  slug: 'breakthrough-quantum-computing',
-                  stage: 'Awaiting Approval',
-                  status: 'awaiting_approval',
-                  word_count: 540,
-                  quality_score: 94,
-                  updated_at: new Date().toISOString(),
-                },
-                {
-                  id: 'demo-art-2',
-                  title: 'Global Semiconductor Fab Yield Surpasses 85%',
-                  headline: 'Global Semiconductor Fab Yield Surpasses 85%',
-                  slug: 'semiconductor-fab-yield-milestone',
-                  stage: 'Scheduled',
-                  status: 'scheduled',
-                  word_count: 620,
-                  quality_score: 89,
-                  updated_at: new Date().toISOString(),
-                },
-              ]
-        );
+        setArticles(initialArticles);
       }
     } catch {
       setArticles(initialArticles);

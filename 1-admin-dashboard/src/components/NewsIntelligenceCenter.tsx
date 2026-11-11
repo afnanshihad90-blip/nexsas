@@ -82,6 +82,7 @@ export interface StoryClusterItem {
   latestUpdateTime: string;
   shortMetadataDescription: string;
   canonicalUrl: string;
+  imageUrl?: string | null;
   classificationMethod: 'rule_based' | 'ai_fallback';
   classificationReasoning: string;
   needsReview: boolean;
@@ -545,6 +546,7 @@ function mapBackendStoryToClusterItem(
       raw.canonical_url ||
       raw.original_article_url ||
       'https://www.bbc.com/news',
+    imageUrl: raw.imageUrl || raw.image_url || null,
     classificationMethod: 'rule_based',
     classificationReasoning: `Classified under '${catName}' based on live wire signals.`,
     needsReview: false,
@@ -883,13 +885,15 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
     );
     setActionBanner(`⏳ DeepSeek AI is researching, writing, and publishing: "${headline}"...`);
     try {
-      const res = await nexusApi.runAutonomousPipeline(headline, 'auto');
+      const wireImgUrl = target?.imageUrl || undefined;
+      const res = await nexusApi.runAutonomousPipeline(headline, 'auto', wireImgUrl);
       const data = res.data as {
         headline?: string;
         body_markdown?: string;
         quality_score?: number;
         slug?: string;
         status?: string;
+        image?: Record<string, string>;
       } | null;
       if (res.ok && data) {
         const articleSlug =
@@ -907,12 +911,14 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
         const defaultImgUrl = fallbackImgs[categorySlug] || fallbackImgs['ai-technology'];
 
         const rawImg = data.image as Record<string, string> | undefined;
+        // Priority 1: Original wire story photograph
+        const bestImgUrl = wireImgUrl || rawImg?.url || rawImg?.source_url || defaultImgUrl;
         const articleImg = {
-          url: rawImg?.url || rawImg?.source_url || defaultImgUrl,
+          url: bestImgUrl,
           alt: rawImg?.alt || rawImg?.alt_text || headline,
-          credit: rawImg?.credit || rawImg?.photographer || 'Editorial Archive',
-          credit_url: rawImg?.credit_url || rawImg?.source_url || defaultImgUrl,
-          license: rawImg?.license || 'CC BY-SA 4.0',
+          credit: wireImgUrl ? 'Original Wire Press Photo' : (rawImg?.credit || rawImg?.photographer || 'Editorial Archive'),
+          credit_url: wireImgUrl || rawImg?.credit_url || rawImg?.source_url || defaultImgUrl,
+          license: wireImgUrl ? 'Editorial Use' : (rawImg?.license || 'CC BY-SA 4.0'),
         };
 
         // Push directly to local blog via browser to bypass InfinityFree outbound restrictions
@@ -938,7 +944,7 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
           bodyMarkdown: fullBody,
           qualityScore: data.quality_score ?? 95,
           slug: articleSlug,
-          imageUrl: articleImg.url,
+          imageUrl: bestImgUrl,
         });
 
         const blogOrigin = window.location.origin;
@@ -1324,6 +1330,13 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
+                      {story.imageUrl && (
+                        <img
+                          src={story.imageUrl}
+                          alt=""
+                          className="w-16 h-16 rounded-lg object-cover shrink-0 border border-slate-200 dark:border-slate-800 bg-slate-900"
+                        />
+                      )}
                       <div className="space-y-1 flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono">
                           <span className="text-blue-600 dark:text-blue-400 font-semibold">
@@ -1456,6 +1469,23 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
                         {publishedArticle.bodyMarkdown.split('\n\n').map((para, pIdx) => (
                           <p key={pIdx}>{para.replace(/^#+\s*/, '')}</p>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Wire Story Photo Preview */}
+                  {activeCluster.imageUrl && (!publishedArticle || publishedArticle.storyId !== activeCluster.storyId) && (
+                    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 relative group">
+                      <img
+                        src={activeCluster.imageUrl}
+                        alt={activeCluster.mainHeadline}
+                        className="w-full h-44 object-cover"
+                      />
+                      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-2.5 flex items-center justify-between text-[11px] text-white">
+                        <span className="font-medium truncate">Original Wire Story Photograph</span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[10px] border border-emerald-500/30">
+                          Original Wire Photo
+                        </span>
                       </div>
                     </div>
                   )}

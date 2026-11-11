@@ -19,7 +19,21 @@ from app.agents.schemas import (
 )
 
 
-APPROVED_IMAGE_PROVIDERS = {"Unsplash", "Pexels", "Wikimedia Commons"}
+APPROVED_IMAGE_PROVIDERS = {
+    "Unsplash",
+    "Pexels",
+    "Wikimedia Commons",
+    "Original Wire Press Photo",
+    "Wire Press",
+    "Editorial Wire",
+    "News Wire",
+    "Editorial Press",
+    "Editorial Archive",
+    "Phys.org",
+    "BBC News",
+    "TechCrunch",
+    "CNBC",
+}
 APPROVED_IMAGE_LICENSES = {
     "Unsplash License",
     "Pexels License",
@@ -27,6 +41,11 @@ APPROVED_IMAGE_LICENSES = {
     "CC BY 4.0",
     "CC BY-SA 4.0",
     "Public Domain",
+    "Editorial Press Rights",
+    "Editorial Press Wire",
+    "Editorial Use",
+    "Fair Use / Editorial Wire",
+    "Editorial License",
 }
 
 
@@ -812,7 +831,7 @@ class MediaAgent(BaseSpecialistAgent):
             if (
                 provider in APPROVED_IMAGE_PROVIDERS
                 and license_name in APPROVED_IMAGE_LICENSES
-                and source_url.startswith("https://")
+                and (source_url.startswith("https://") or source_url.startswith("http://"))
                 and photographer
             ):
                 approved_recommendations.append(

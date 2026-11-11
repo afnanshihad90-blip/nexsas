@@ -114,7 +114,7 @@ export default function App() {
           setPublishingStages((prev) =>
             prev.map((s) => {
               const count = liveArticles.filter((a) => a.stage === s.stage).length;
-              return count > 0 ? { ...s, count } : s;
+              return { ...s, count, changeLabel: `${count} in queue` };
             })
           );
         }

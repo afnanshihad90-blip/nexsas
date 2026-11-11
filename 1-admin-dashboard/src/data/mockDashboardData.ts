@@ -669,64 +669,64 @@ export const INITIAL_ACTIVITY_TIMELINE: ActivityEvent[] = [
 export const INITIAL_PUBLISHING_STAGES: PublishingStageMetric[] = [
   {
     stage: 'Drafts',
-    count: 14,
-    changeLabel: '+3 in last 4h',
+    count: 0,
+    changeLabel: '0 in queue',
     description: 'Active composition by News Writer and Research Agent.',
   },
   {
     stage: 'Awaiting Approval',
-    count: 8,
-    changeLabel: '2 high priority',
+    count: 0,
+    changeLabel: '0 awaiting review',
     description: 'Passed automated Fact Checker; queued for human or Orchestrator sign-off.',
   },
   {
     stage: 'Scheduled',
-    count: 11,
-    changeLabel: 'Next slot in 25m',
+    count: 0,
+    changeLabel: '0 scheduled',
     description: 'Approved with SEO metadata and media assets locked for timed release.',
   },
   {
     stage: 'Published',
-    count: 34,
-    changeLabel: '+11.8% vs yesterday',
-    description: 'Completed pipeline runs in current 24h operational window.',
+    count: 0,
+    changeLabel: '0 published',
+    description: 'Completed pipeline runs in current operational window.',
   },
   {
     stage: 'Failed',
-    count: 2,
-    changeLabel: 'OAuth connector',
-    description: 'Held in queue pending social token authorization.',
+    count: 0,
+    changeLabel: '0 failures',
+    description: 'Held in queue pending error resolution.',
   },
 ];
 
 export const ANALYTICS_SERIES_BY_RANGE: Record<DateRangeOption, AnalyticsPoint[]> = {
   '24h': [
-    { label: '00:00', websiteViews: 0, articlesPublished: 1, socialReach: 0, revenueUsd: 0.0 },
-    { label: '04:00', websiteViews: 0, articlesPublished: 1, socialReach: 0, revenueUsd: 0.0 },
-    { label: '08:00', websiteViews: 0, articlesPublished: 2, socialReach: 0, revenueUsd: 0.0 },
-    { label: '12:00', websiteViews: 0, articlesPublished: 2, socialReach: 0, revenueUsd: 0.0 },
-    { label: '16:00', websiteViews: 0, articlesPublished: 3, socialReach: 0, revenueUsd: 0.0 },
-    { label: '20:00', websiteViews: 0, articlesPublished: 3, socialReach: 0, revenueUsd: 0.0 },
+    { label: '00:00', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: '04:00', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: '08:00', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: '12:00', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: '16:00', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: '20:00', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
   ],
   '7d': [
-    { label: 'Mon', websiteViews: 0, articlesPublished: 1, socialReach: 0, revenueUsd: 0.0 },
-    { label: 'Tue', websiteViews: 0, articlesPublished: 2, socialReach: 0, revenueUsd: 0.0 },
-    { label: 'Wed', websiteViews: 0, articlesPublished: 3, socialReach: 0, revenueUsd: 0.0 },
-    { label: 'Thu', websiteViews: 0, articlesPublished: 3, socialReach: 0, revenueUsd: 0.0 },
-    { label: 'Fri', websiteViews: 0, articlesPublished: 3, socialReach: 0, revenueUsd: 0.0 },
-    { label: 'Sat', websiteViews: 0, articlesPublished: 3, socialReach: 0, revenueUsd: 0.0 },
-    { label: 'Sun', websiteViews: 0, articlesPublished: 3, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Mon', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Tue', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Wed', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Thu', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Fri', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Sat', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Sun', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
   ],
   '30d': [
-    { label: 'Wk 1', websiteViews: 0, articlesPublished: 2, socialReach: 0, revenueUsd: 0.0 },
-    { label: 'Wk 2', websiteViews: 0, articlesPublished: 3, socialReach: 0, revenueUsd: 0.0 },
-    { label: 'Wk 3', websiteViews: 0, articlesPublished: 3, socialReach: 0, revenueUsd: 0.0 },
-    { label: 'Wk 4', websiteViews: 0, articlesPublished: 3, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Wk 1', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Wk 2', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Wk 3', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Wk 4', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
   ],
   '90d': [
-    { label: 'Month 1', websiteViews: 0, articlesPublished: 1, socialReach: 0, revenueUsd: 0.0 },
-    { label: 'Month 2', websiteViews: 0, articlesPublished: 2, socialReach: 0, revenueUsd: 0.0 },
-    { label: 'Month 3', websiteViews: 0, articlesPublished: 3, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Month 1', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Month 2', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
+    { label: 'Month 3', websiteViews: 0, articlesPublished: 0, socialReach: 0, revenueUsd: 0.0 },
   ],
 };
 
@@ -760,86 +760,7 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   },
 ];
 
-export const INITIAL_ARTICLES: ArticleRecord[] = [
-  {
-    id: 'NX-4092',
-    headline: 'High-NA Lithography Tooling Reaches Commercial Volume Across Leading Foundries',
-    category: 'Semiconductors',
-    stage: 'Awaiting Approval',
-    authorAgent: 'News Writer',
-    factCheckScore: 99,
-    seoScore: 94,
-    wordCount: 845,
-    updatedAt: '8 mins ago',
-    summary:
-      'Primary equipment disclosures confirm commercial wafer throughput milestones across three tier-one fabrication plants.',
-  },
-  {
-    id: 'NX-4091',
-    headline: 'North Sea Offshore Grid Interconnects Cleared for 14 GW Bi-Directional Dispatch',
-    category: 'Energy Infrastructure',
-    stage: 'Published',
-    authorAgent: 'News Writer',
-    factCheckScore: 98,
-    seoScore: 96,
-    wordCount: 910,
-    updatedAt: '32 mins ago',
-    summary:
-      'Cross-border transmission operators finalized high-voltage direct current balancing protocols ahead of winter peak load.',
-  },
-  {
-    id: 'NX-4090',
-    headline: 'Sovereign AI Compute Clusters Shift Toward On-Site Closed-Loop Liquid Cooling',
-    category: 'Cloud & Infrastructure',
-    stage: 'Scheduled',
-    authorAgent: 'News Writer',
-    factCheckScore: 97,
-    seoScore: 91,
-    wordCount: 760,
-    updatedAt: '54 mins ago',
-    summary:
-      'Municipal power allocation filings reveal strict thermal density covenants for new 100-megawatt data center campuses.',
-  },
-  {
-    id: 'NX-4089',
-    headline: 'Global Maritime Container Spot Rates Stabilize Following Red Sea Feeder Rebalancing',
-    category: 'Global Trade',
-    stage: 'Published',
-    authorAgent: 'News Writer',
-    factCheckScore: 96,
-    seoScore: 89,
-    wordCount: 680,
-    updatedAt: '1 hour ago',
-    summary:
-      'Weekly freight index data shows a 4.2% narrowing in Asia-Europe container spreads as new LNG-dual-fuel vessels enter service.',
-  },
-  {
-    id: 'NX-4088',
-    headline: 'Autonomous Freight Corridor Trials Expand Across Central European Rail Freight Nodes',
-    category: 'Mobility & Logistics',
-    stage: 'Drafts',
-    authorAgent: 'News Writer',
-    factCheckScore: 91,
-    seoScore: 82,
-    wordCount: 540,
-    updatedAt: '2 hours ago',
-    summary:
-      'Early synthesis of ERTMS Level 3 signaling telemetry from cross-alpine cargo operators.',
-  },
-  {
-    id: 'NX-4087',
-    headline: 'Social Syndication Thread: Q3 Foundry Wafer Pricing Breakdown',
-    category: 'Semiconductors',
-    stage: 'Failed',
-    authorAgent: 'Publishing Agent',
-    factCheckScore: 99,
-    seoScore: 90,
-    wordCount: 410,
-    updatedAt: '3 hours ago',
-    summary:
-      'Article approved with verified claims and SEO metadata, awaiting social token authorization.',
-  },
-];
+export const INITIAL_ARTICLES: ArticleRecord[] = [];
 
 export const TRENDING_SIGNALS: TrendingSignal[] = [
   {

@@ -93,6 +93,7 @@ async def get_article(
 async def trigger_autonomous_pipeline(
     custom_headline: Optional[str] = Query(default=None),
     publishing_mode: Optional[str] = Query(default=None),
+    image_url: Optional[str] = Query(default=None),
     principal: AuthenticatedPrincipal = Depends(require_editor_or_admin),
     session: Optional[AsyncSession] = Depends(get_db_session),
 ):
@@ -101,6 +102,7 @@ async def trigger_autonomous_pipeline(
         session=session,
         custom_headline=custom_headline,
         override_mode=publishing_mode,
+        custom_image_url=image_url,
     )
 
 

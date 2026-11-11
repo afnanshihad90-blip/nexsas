@@ -572,11 +572,15 @@ class NewsIntelligenceEngine:
         for nid in cluster.related_news_ids:
             item = self.news_items.get(nid)
             if item:
-                canonical_url = canonical_url or item.get("canonical_url") or item.get("original_article_url")
-                source_name = item.get("source_name") or source_name
-                summary = summary or item.get("summary") or item.get("short_metadata_description")
-                image_url = image_url or item.get("image_url")
-                if canonical_url:
+                if not canonical_url:
+                    canonical_url = item.get("canonical_url") or item.get("original_article_url")
+                if source_name == "Global Wire Feed" and item.get("source_name"):
+                    source_name = item.get("source_name")
+                if not summary:
+                    summary = item.get("summary") or item.get("short_metadata_description")
+                if not image_url and item.get("image_url"):
+                    image_url = item.get("image_url")
+                if canonical_url and image_url:
                     break
 
         related_sources = []
@@ -596,6 +600,7 @@ class NewsIntelligenceEngine:
         c_dict["summary"] = summary or cluster.main_headline
         c_dict["short_metadata_description"] = summary or cluster.main_headline
         c_dict["image_url"] = image_url
+        c_dict["imageUrl"] = image_url
         c_dict["related_sources"] = related_sources
         return c_dict
 

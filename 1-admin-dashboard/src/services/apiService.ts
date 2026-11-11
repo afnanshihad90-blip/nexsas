@@ -969,11 +969,17 @@ class NexusApiService {
   }
 
   // 9. Autonomous Pipeline Run
-  public async runAutonomousPipeline(customHeadline?: string, publishingMode?: string, bearerToken?: string) {
+  public async runAutonomousPipeline(
+    customHeadline?: string,
+    publishingMode?: string,
+    customImageUrl?: string,
+    bearerToken?: string
+  ) {
     const token = bearerToken || this.getToken() || undefined;
     const params = new URLSearchParams();
     if (customHeadline) params.set('custom_headline', customHeadline);
     if (publishingMode) params.set('publishing_mode', publishingMode);
+    if (customImageUrl) params.set('image_url', customImageUrl);
     const qs = params.toString() ? `?${params.toString()}` : '';
     return this.requestJson(`/api/articles/pipeline/run${qs}`, {
       method: 'POST',

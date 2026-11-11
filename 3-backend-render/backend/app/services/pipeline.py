@@ -79,6 +79,7 @@ async def run_autonomous_editorial_pipeline(
     custom_headline: Optional[str] = None,
     custom_sources: Optional[List[Dict[str, Any]]] = None,
     override_mode: Optional[str] = None,
+    custom_image_url: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Executes the full end-to-end autonomous editorial pipeline.
@@ -100,24 +101,52 @@ async def run_autonomous_editorial_pipeline(
     sources = custom_sources or SAMPLE_VERIFIED_NEWS_STORY["sources"]
     idempotency_key = f"pipeline-{uuid.uuid4().hex[:10]}"
 
-    # 3. Media Pre-Sourcing (Wikimedia Commons / Pexels / Unsplash)
+    # 3. Media Pre-Sourcing (Original wire image priority, then Wikimedia Commons / Pexels / Unsplash)
     candidate_images: List[Dict[str, Any]] = []
-    try:
-        best_img = await pick_best_image(
-            headline=headline,
-            pexels_key=settings.PEXELS_API_KEY,
-            unsplash_key=settings.UNSPLASH_ACCESS_KEY,
-        )
-        if best_img:
-            candidate_images.append({
-                "provider": best_img.get("provider", "Wikimedia Commons").title(),
-                "source_url": best_img.get("url"),
-                "license": best_img.get("license", "CC BY-SA 4.0"),
-                "photographer": best_img.get("credit", "Editorial Photography Archive"),
-                "alt_text": best_img.get("alt", f"Editorial illustration for {headline}"),
-            })
-    except Exception as exc:
-        logger.info("External image sourcing fallback: %s", exc)
+    wire_image_url = custom_image_url
+
+    # If custom_image_url was not passed directly, look for it in the News Intelligence Engine
+    if not wire_image_url and custom_headline:
+        try:
+            from app.intelligence.engine import news_intelligence_engine
+            from app.intelligence.deduplication import normalize_headline
+            target_norm = normalize_headline(headline)
+            for item in news_intelligence_engine.news_items.values():
+                item_img = item.get("image_url")
+                if item_img:
+                    it_norm = normalize_headline(item.get("headline", "") or item.get("original_headline", ""))
+                    if it_norm and (target_norm in it_norm or it_norm in target_norm or target_norm[:30] == it_norm[:30]):
+                        wire_image_url = item_img
+                        break
+        except Exception as exc:
+            logger.info("News intelligence engine image lookup fallback: %s", exc)
+
+    if wire_image_url:
+        candidate_images.append({
+            "provider": "Original Wire Press Photo",
+            "source_url": wire_image_url,
+            "url": wire_image_url,
+            "license": "Editorial Press Rights",
+            "photographer": "Wire Press Photo",
+            "alt_text": f"Original news photograph for {headline}",
+        })
+    else:
+        try:
+            best_img = await pick_best_image(
+                headline=headline,
+                pexels_key=settings.PEXELS_API_KEY,
+                unsplash_key=settings.UNSPLASH_ACCESS_KEY,
+            )
+            if best_img:
+                candidate_images.append({
+                    "provider": best_img.get("provider", "Wikimedia Commons").title(),
+                    "source_url": best_img.get("url"),
+                    "license": best_img.get("license", "CC BY-SA 4.0"),
+                    "photographer": best_img.get("credit", "Editorial Photography Archive"),
+                    "alt_text": best_img.get("alt", f"Editorial illustration for {headline}"),
+                })
+        except Exception as exc:
+            logger.info("External image sourcing fallback: %s", exc)
 
     if not candidate_images:
         hl_low = headline.lower()
@@ -171,6 +200,14 @@ async def run_autonomous_editorial_pipeline(
     quality_total = quality_score.get("total_score", 92) if isinstance(quality_score, dict) else 92
     rec_images = s8_result.get("recommended_images") or candidate_images
     top_img = rec_images[0] if rec_images else {}
+    if wire_image_url and (not top_img.get("source_url") or "unsplash.com" in str(top_img.get("source_url", ""))):
+        top_img = {
+            "source_url": wire_image_url,
+            "url": wire_image_url,
+            "alt_text": f"Original news photograph for {headline}",
+            "photographer": "Wire Press Photo",
+            "license": "Editorial Press Rights",
+        }
 
     # 6. Publishing Mode Decision
     mode = (override_mode or settings.PUBLISHING_MODE or "manual").strip().lower()

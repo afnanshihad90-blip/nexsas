@@ -23,9 +23,12 @@ Features:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import html
 import json
+import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
 import urllib.error
@@ -430,6 +433,57 @@ class RSSFeedConnector(BaseNewsSourceConnector):
 
         items: List[FetchedRawItem] = []
 
+        def _enhance_url(u: str) -> str:
+            if not u:
+                return ""
+            # Phys.org thumbnail upgrade to 800px full resolution
+            if "scx1.b-cdn.net/csz/news/tmb/" in u:
+                return u.replace("/tmb/", "/800/")
+            # BBC standard thumbnail upgrade to 800px
+            if "ichef.bbci.co.uk/ace/standard/" in u:
+                return re.sub(r"/standard/\d+/", "/standard/800/", u)
+            return u
+
+        def _extract_image_xml(el: ET.Element) -> Optional[str]:
+            for tag in (
+                "{http://search.yahoo.com/mrss/}thumbnail",
+                "thumbnail",
+                "{http://search.yahoo.com/mrss/}content",
+                "content",
+            ):
+                for node in el.findall(f".//{tag}") + el.findall(tag):
+                    u = node.attrib.get("url") or node.attrib.get("href")
+                    if u:
+                        medium = node.attrib.get("medium", "")
+                        m_type = node.attrib.get("type", "")
+                        if medium == "image" or m_type.startswith("image/") or any(ext in u.lower() for ext in (".jpg", ".jpeg", ".png", ".webp")):
+                            return _enhance_url(u.strip())
+                    if u and tag.endswith("thumbnail"):
+                        return _enhance_url(u.strip())
+
+            for node in el.findall(".//enclosure") + el.findall("enclosure"):
+                u = node.attrib.get("url") or node.attrib.get("href")
+                m_type = node.attrib.get("type", "")
+                if u and (m_type.startswith("image/") or any(ext in u.lower() for ext in (".jpg", ".jpeg", ".png", ".webp"))):
+                    return _enhance_url(u.strip())
+
+            atom_ns = "{http://www.w3.org/2005/Atom}"
+            for node in el.findall(f".//{atom_ns}link") + el.findall(".//link"):
+                rel = node.attrib.get("rel", "")
+                m_type = node.attrib.get("type", "")
+                href = node.attrib.get("href", "")
+                if href and (rel == "enclosure" or m_type.startswith("image/")):
+                    return _enhance_url(href.strip())
+
+            for child in el:
+                if any(child.tag.endswith(t) for t in ("description", "encoded", "summary", "content")):
+                    text = child.text or ""
+                    if "<img" in text:
+                        m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', text, re.I)
+                        if m:
+                            return _enhance_url(m.group(1).strip())
+            return None
+
         # RSS 2.0 <item> elements
         for item_el in root.findall(".//item"):
             title = (item_el.findtext("title") or "").strip()
@@ -443,6 +497,7 @@ class RSSFeedConnector(BaseNewsSourceConnector):
             )
             desc = (item_el.findtext("description") or "").strip()
             cat = (item_el.findtext("category") or "").strip() or None
+            img_url = _extract_image_xml(item_el)
             if title and link:
                 items.append(
                     FetchedRawItem(
@@ -454,6 +509,8 @@ class RSSFeedConnector(BaseNewsSourceConnector):
                         summary=desc,
                         language=self.default_language,
                         category_hint=cat,
+                        image_url=img_url,
+                        image_legally_usable=bool(img_url),
                     )
                 )
 
@@ -486,6 +543,7 @@ class RSSFeedConnector(BaseNewsSourceConnector):
                     or entry_el.findtext("summary")
                     or ""
                 ).strip()
+                img_url = _extract_image_xml(entry_el)
                 if title and link:
                     items.append(
                         FetchedRawItem(
@@ -495,8 +553,46 @@ class RSSFeedConnector(BaseNewsSourceConnector):
                             published_at=updated,
                             summary=summary,
                             language=self.default_language,
+                            image_url=img_url,
+                            image_legally_usable=bool(img_url),
                         )
                     )
+
+        # Concurrent og:image extraction for items with missing image
+        missing_indices = [idx for idx, it in enumerate(items) if not it.image_url and it.url]
+        if missing_indices:
+            def _fetch_single_og(target_url: str) -> Optional[str]:
+                try:
+                    req = urllib.request.Request(
+                        target_url,
+                        headers={
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                            "Accept": "text/html,application/xhtml+xml",
+                        },
+                    )
+                    with urllib.request.urlopen(req, timeout=3.5) as resp:
+                        chunk = resp.read(65536).decode("utf-8", errors="ignore")
+                        m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', chunk, re.I)
+                        if not m:
+                            m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', chunk, re.I)
+                        if m:
+                            found = html.unescape(m.group(1).strip())
+                            if found.startswith("http"):
+                                return found
+                except Exception:
+                    pass
+                return None
+
+            urls_to_fetch = [items[idx].url for idx in missing_indices]
+            try:
+                with ThreadPoolExecutor(max_workers=min(8, len(urls_to_fetch))) as executor:
+                    fetched_images = list(executor.map(_fetch_single_og, urls_to_fetch))
+                for idx, og_img in zip(missing_indices, fetched_images):
+                    if og_img:
+                        items[idx].image_url = og_img
+                        items[idx].image_legally_usable = True
+            except Exception:
+                pass
 
         start = max(0, (max(1, page) - 1) * max(1, page_size))
         end = start + max(1, page_size)
