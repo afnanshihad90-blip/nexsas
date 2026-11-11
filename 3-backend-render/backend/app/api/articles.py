@@ -130,7 +130,6 @@ async def scrape_and_publish_article(
     from app.config import get_settings
     from app.intelligence.scraper import scrape_source_article, synthesize_rich_article
     from app.publishing.blog_client import push_article
-    from app.agents.provider_adapter import ProviderAdapter
 
     settings = get_settings()
 
@@ -140,9 +139,10 @@ async def scrape_and_publish_article(
     # 2. Get provider adapter if configured
     provider = None
     try:
-        provider = ProviderAdapter()
-    except Exception:
-        pass
+        from app.agents.provider import AIProviderAdapter
+        provider = AIProviderAdapter()
+    except Exception as pr_err:
+        logger.info("Provider adapter initialization notice: %s", pr_err)
 
     # 3. Synthesize rich, expansive editorial article preserving all media
     body_md = await synthesize_rich_article(
