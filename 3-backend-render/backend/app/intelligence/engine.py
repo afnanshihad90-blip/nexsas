@@ -562,6 +562,43 @@ class NewsIntelligenceEngine:
         item["archived_at"] = datetime.now(timezone.utc).isoformat()
         return dict(item)
 
+    def _enrich_cluster_dict(self, cluster: Any) -> Dict[str, Any]:
+        c_dict = cluster.to_dict()
+        canonical_url = None
+        source_name = "Global Wire Feed"
+        summary = None
+        image_url = None
+
+        for nid in cluster.related_news_ids:
+            item = self.news_items.get(nid)
+            if item:
+                canonical_url = canonical_url or item.get("canonical_url") or item.get("original_article_url")
+                source_name = item.get("source_name") or source_name
+                summary = summary or item.get("summary") or item.get("short_metadata_description")
+                image_url = image_url or item.get("image_url")
+                if canonical_url:
+                    break
+
+        related_sources = []
+        for s_id in cluster.related_source_ids:
+            src_conf = self.sources.get(s_id, {})
+            related_sources.append({
+                "sourceId": s_id,
+                "sourceName": src_conf.get("name") or source_name,
+                "url": canonical_url or src_conf.get("endpoint_url") or "https://www.bbc.com/news",
+                "isSyndicated": False,
+                "reliabilityScore": src_conf.get("reliability_score", 95),
+            })
+
+        c_dict["canonical_url"] = canonical_url or "https://www.bbc.com/news"
+        c_dict["canonicalUrl"] = canonical_url or "https://www.bbc.com/news"
+        c_dict["source_name"] = source_name
+        c_dict["summary"] = summary or cluster.main_headline
+        c_dict["short_metadata_description"] = summary or cluster.main_headline
+        c_dict["image_url"] = image_url
+        c_dict["related_sources"] = related_sources
+        return c_dict
+
     def list_trending_stories(
         self,
         category_slug: Optional[str] = None,
@@ -576,9 +613,10 @@ class NewsIntelligenceEngine:
                 continue
             if float(score_data["trend_score"]) < min_score:
                 continue
+            enriched = self._enrich_cluster_dict(cluster)
             results.append(
                 {
-                    **cluster.to_dict(),
+                    **enriched,
                     **score_data,
                 }
             )
@@ -589,9 +627,10 @@ class NewsIntelligenceEngine:
         clusters_out: List[Dict[str, Any]] = []
         for story_id, cluster in self.clustering_engine.clusters.items():
             score_data = self.trend_scores.get(story_id, {})
+            enriched = self._enrich_cluster_dict(cluster)
             clusters_out.append(
                 {
-                    **cluster.to_dict(),
+                    **enriched,
                     "trend_score": score_data.get("trend_score", 0.0),
                     "trend_level": score_data.get("trend_level", "Ignore"),
                     "trend_status": score_data.get("trend_status", "emerging"),

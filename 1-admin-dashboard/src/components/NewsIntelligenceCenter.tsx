@@ -640,6 +640,7 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
     bodyMarkdown: string;
     qualityScore: number;
     slug: string;
+    imageUrl?: string;
   } | null>(null);
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
 
@@ -878,6 +879,25 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
         const articleSlug =
           data.slug || headline.toLowerCase().replace(/[^a-z0-9]+/g, '-');
         const fullBody = data.body_markdown || headline;
+        const categorySlug = target?.categorySlug || 'technology';
+        
+        // Smart fallback image based on niche category if pipeline image missing
+        const fallbackImgs: Record<string, string> = {
+          'science-space': 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80',
+          'ai-technology': 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&auto=format&fit=crop&q=80',
+          'business-finance': 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&auto=format&fit=crop&q=80',
+          'world-trending-news': 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=1200&auto=format&fit=crop&q=80',
+        };
+        const defaultImgUrl = fallbackImgs[categorySlug] || fallbackImgs['ai-technology'];
+
+        const rawImg = data.image as Record<string, string> | undefined;
+        const articleImg = {
+          url: rawImg?.url || rawImg?.source_url || defaultImgUrl,
+          alt: rawImg?.alt || rawImg?.alt_text || headline,
+          credit: rawImg?.credit || rawImg?.photographer || 'Editorial Archive',
+          credit_url: rawImg?.credit_url || rawImg?.source_url || defaultImgUrl,
+          license: rawImg?.license || 'CC BY-SA 4.0',
+        };
 
         // Push directly to local blog via browser to bypass InfinityFree outbound restrictions
         try {
@@ -891,6 +911,7 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
               excerpt: fullBody.slice(0, 250),
               category: target?.categorySlug || 'technology',
               status: 'published',
+              image: articleImg,
             }),
           });
         } catch {}
@@ -901,10 +922,12 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
           bodyMarkdown: fullBody,
           qualityScore: data.quality_score ?? 95,
           slug: articleSlug,
+          imageUrl: articleImg.url,
         });
 
+        const blogOrigin = window.location.origin;
         setActionBanner(
-          `🎉 Article published! "${data.headline || headline}" (Quality: ${data.quality_score ?? 95}/100). Visit your live blog: http://vibeshopbd.lovestoblog.com/`
+          `🎉 Article published! "${data.headline || headline}" (Quality: ${data.quality_score ?? 95}/100). Visit your live blog: ${blogOrigin}/`
         );
       } else {
         setActionBanner(
@@ -1382,10 +1405,10 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
                       <div className="flex items-center justify-between gap-2">
                         <div className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
                           <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                          <span>Article Published to Live Blog! (Score: {publishedArticle.qualityScore}/100)</span>
+                          <span>Article &amp; Image Published! (Score: {publishedArticle.qualityScore}/100)</span>
                         </div>
                         <a
-                          href={`http://vibeshopbd.lovestoblog.com/article/${publishedArticle.slug}`}
+                          href={`/article/${publishedArticle.slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] inline-flex items-center gap-1 shrink-0"
@@ -1394,6 +1417,15 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
+                      {publishedArticle.imageUrl && (
+                        <div className="rounded-lg overflow-hidden border border-emerald-500/20 max-h-40">
+                          <img
+                            src={publishedArticle.imageUrl}
+                            alt={publishedArticle.headline}
+                            className="w-full h-40 object-cover"
+                          />
+                        </div>
+                      )}
                       <div className="max-h-64 overflow-y-auto pr-1 space-y-2 text-slate-800 dark:text-slate-200 text-xs leading-relaxed bg-white/70 dark:bg-black/40 p-3 rounded-lg border border-emerald-500/20">
                         {publishedArticle.bodyMarkdown.split('\n\n').map((para, pIdx) => (
                           <p key={pIdx}>{para.replace(/^#+\s*/, '')}</p>

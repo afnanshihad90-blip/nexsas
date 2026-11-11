@@ -23,7 +23,8 @@
             content: art.body_markdown || art.content || art.excerpt,
             excerpt: art.summary || art.excerpt || '',
             category: art.category || 'technology',
-            status: 'published'
+            status: 'published',
+            image: art.image || null,
           })
         });
         if (syncRes.ok) syncedAny = true;

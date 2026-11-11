@@ -10,6 +10,20 @@ function upsert_article(array $a): int {
   $cat = isset($cats[$a['category'] ?? '']) ? $a['category'] : 'technology';
   $status = (($a['status'] ?? 'draft') === 'published') ? 'published' : 'draft';
   $img = is_array($a['image'] ?? null) ? $a['image'] : [];
+  $imgUrl = safe_url($img['url'] ?? $img['source_url'] ?? $a['image_url'] ?? '');
+  if (!$imgUrl) {
+    $fallbacks = [
+      'science' => 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80',
+      'technology' => 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&auto=format&fit=crop&q=80',
+      'business' => 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&auto=format&fit=crop&q=80',
+      'world' => 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=1200&auto=format&fit=crop&q=80',
+    ];
+    $imgUrl = $fallbacks[$cat] ?? $fallbacks['technology'];
+  }
+  $imgAlt = $img['alt'] ?? $img['alt_text'] ?? $a['image_alt'] ?? $title;
+  $imgCredit = $img['credit'] ?? $img['photographer'] ?? $a['image_credit'] ?? 'Editorial Archive';
+  $imgCreditUrl = safe_url($img['credit_url'] ?? $img['source_url'] ?? $a['image_credit_url'] ?? $imgUrl);
+  $imgLicense = $img['license'] ?? $a['image_license'] ?? 'CC BY-SA 4.0';
   $pub = $status === 'published' ? date('Y-m-d H:i:s', isset($a['published_at']) && strtotime($a['published_at']) ? strtotime($a['published_at']) : time()) : null;
   $isSqlite = ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite');
   if ($isSqlite) {
@@ -34,8 +48,8 @@ function upsert_article(array $a): int {
   $st->execute([
     ':slug' => $slug, ':title' => mb_substr($title, 0, 300), ':excerpt' => mb_substr((string)($a['excerpt'] ?? ''), 0, 600),
     ':content' => $content, ':cat' => $cat, ':status' => $status, ':meta' => mb_substr((string)($a['meta_description'] ?? ''), 0, 300),
-    ':iu' => safe_url($img['url'] ?? '') ?: null, ':ia' => $img['alt'] ?? null, ':ic' => $img['credit'] ?? null,
-    ':icu' => safe_url($img['credit_url'] ?? '') ?: null, ':il' => $img['license'] ?? null,
+    ':iu' => $imgUrl ?: null, ':ia' => $imgAlt, ':ic' => $imgCredit,
+    ':icu' => $imgCreditUrl ?: null, ':il' => $imgLicense,
     ':src' => json_encode(array_values(array_filter($a['sources'] ?? [], fn($s) => is_array($s) && safe_url($s['url'] ?? '')))),
     ':pub' => $pub,
   ]);

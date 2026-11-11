@@ -6,7 +6,9 @@ define('DB_USER', '');
 define('DB_PASS', '');
 
 define('SITE_NAME', 'Nexus Media');
-define('SITE_URL', 'http://vibeshopbd.lovestoblog.com');
+$proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+$host = $_SERVER['HTTP_HOST'] ?? 'nexusnews.site.je';
+define('SITE_URL', $proto . $host);
 define('SITE_TAGLINE', 'Business, World, AI & Science — explained.');
 
 define('NEXUS_API_SECRET', 'test-cross-language-signing-secret-key-12345');
