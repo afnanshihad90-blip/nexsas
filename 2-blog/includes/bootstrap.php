@@ -7,46 +7,53 @@ function db(): PDO {
   static $pdo = null;
   if ($pdo === null) {
     if ((defined('DB_DRIVER') && DB_DRIVER === 'sqlite') || (defined('DB_HOST') && (DB_HOST === 'sqlite' || substr(DB_NAME, -3) === '.db'))) {
-      $pdo = new PDO('sqlite:' . DB_NAME, null, null, [
+      $dbFile = DB_NAME;
+      if (!file_exists($dbFile) && is_writable(dirname($dbFile))) {
+        @touch($dbFile);
+        @chmod($dbFile, 0666);
+      }
+      $pdo = new PDO('sqlite:' . $dbFile, null, null, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
       ]);
       try {
         $pdo->exec('PRAGMA journal_mode = DELETE;');
       } catch (Throwable $t) {}
-      $pdo->exec("
-        CREATE TABLE IF NOT EXISTS articles (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          slug TEXT NOT NULL UNIQUE,
-          title TEXT NOT NULL,
-          excerpt TEXT,
-          content TEXT NOT NULL,
-          category TEXT NOT NULL DEFAULT 'technology',
-          status TEXT NOT NULL DEFAULT 'draft',
-          meta_description TEXT,
-          image_url TEXT,
-          image_alt TEXT,
-          image_credit TEXT,
-          image_credit_url TEXT,
-          image_license TEXT,
-          sources_json TEXT,
-          views INTEGER NOT NULL DEFAULT 0,
-          published_at DATETIME NULL,
-          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS idempotency_keys (
-          k TEXT PRIMARY KEY,
-          slug TEXT NOT NULL,
-          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS sync_state (
-          id INTEGER PRIMARY KEY,
-          last_run INTEGER NOT NULL DEFAULT 0,
-          last_status TEXT
-        );
-        INSERT OR IGNORE INTO sync_state (id, last_run) VALUES (1, 0);
-      ");
+      try {
+        $pdo->exec("
+          CREATE TABLE IF NOT EXISTS articles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            slug TEXT NOT NULL UNIQUE,
+            title TEXT NOT NULL,
+            excerpt TEXT,
+            content TEXT NOT NULL,
+            category TEXT NOT NULL DEFAULT 'technology',
+            status TEXT NOT NULL DEFAULT 'draft',
+            meta_description TEXT,
+            image_url TEXT,
+            image_alt TEXT,
+            image_credit TEXT,
+            image_credit_url TEXT,
+            image_license TEXT,
+            sources_json TEXT,
+            views INTEGER NOT NULL DEFAULT 0,
+            published_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+          );
+          CREATE TABLE IF NOT EXISTS idempotency_keys (
+            k TEXT PRIMARY KEY,
+            slug TEXT NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+          );
+          CREATE TABLE IF NOT EXISTS sync_state (
+            id INTEGER PRIMARY KEY,
+            last_run INTEGER NOT NULL DEFAULT 0,
+            last_status TEXT
+          );
+          INSERT OR IGNORE INTO sync_state (id, last_run) VALUES (1, 0);
+        ");
+      } catch (Throwable $t) {}
     } else {
       $pdo = new PDO('mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4', DB_USER, DB_PASS, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,

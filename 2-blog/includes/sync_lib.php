@@ -2,12 +2,30 @@
 if (!function_exists('upsert_article')) {
 function upsert_article(array $a): int {
   $pdo = db();
-  $slug = slugify($a['slug'] ?? '');
-  $title = trim((string)($a['title'] ?? ''));
-  $content = (string)($a['content'] ?? '');
-  if ($slug === '' || $title === '' || $content === '') throw new InvalidArgumentException('title, slug, content required');
+  $slug = slugify($a['slug'] ?? ($a['title'] ?? ($a['headline'] ?? '')));
+  $title = trim((string)($a['title'] ?? ($a['headline'] ?? '')));
+  $content = (string)($a['content'] ?? ($a['body_markdown'] ?? ($a['excerpt'] ?? $title)));
+  if ($slug === '' || $title === '') throw new InvalidArgumentException('title and slug required');
+  if ($content === '') $content = $title;
+
   $cats = categories();
-  $cat = isset($cats[$a['category'] ?? '']) ? $a['category'] : 'technology';
+  $catMap = [
+    'science-space' => 'science',
+    'ai-technology' => 'technology',
+    'business-finance' => 'business',
+    'world-trending-news' => 'world',
+    'science' => 'science',
+    'technology' => 'technology',
+    'business' => 'business',
+    'world' => 'world',
+    'markets-economy' => 'business',
+    'global-affairs' => 'world',
+    'scientific-discovery' => 'science',
+    'technology-compute' => 'technology',
+  ];
+  $incomingCat = strtolower(trim((string)($a['category'] ?? '')));
+  $cat = $catMap[$incomingCat] ?? (isset($cats[$incomingCat]) ? $incomingCat : 'technology');
+
   $status = (($a['status'] ?? 'draft') === 'published') ? 'published' : 'draft';
   $img = is_array($a['image'] ?? null) ? $a['image'] : [];
   $imgUrl = safe_url($img['url'] ?? $img['source_url'] ?? $a['image_url'] ?? '');
@@ -21,39 +39,76 @@ function upsert_article(array $a): int {
     $imgUrl = $fallbacks[$cat] ?? $fallbacks['technology'];
   }
   $imgAlt = $img['alt'] ?? $img['alt_text'] ?? $a['image_alt'] ?? $title;
-  $imgCredit = $img['credit'] ?? $img['photographer'] ?? $a['image_credit'] ?? 'Editorial Archive';
+  $imgCredit = $img['credit'] ?? $img['photographer'] ?? $a['image_credit'] ?? 'Original Wire Press Photo';
   $imgCreditUrl = safe_url($img['credit_url'] ?? $img['source_url'] ?? $a['image_credit_url'] ?? $imgUrl);
-  $imgLicense = $img['license'] ?? $a['image_license'] ?? 'CC BY-SA 4.0';
-  $pub = $status === 'published' ? date('Y-m-d H:i:s', isset($a['published_at']) && strtotime($a['published_at']) ? strtotime($a['published_at']) : time()) : null;
-  $isSqlite = ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite');
-  if ($isSqlite) {
-    $st = $pdo->prepare('INSERT INTO articles (slug,title,excerpt,content,category,status,meta_description,image_url,image_alt,image_credit,image_credit_url,image_license,sources_json,published_at)
-      VALUES (:slug,:title,:excerpt,:content,:cat,:status,:meta,:iu,:ia,:ic,:icu,:il,:src,:pub)
-      ON CONFLICT(slug) DO UPDATE SET title=excluded.title,excerpt=excluded.excerpt,content=excluded.content,category=excluded.category,
-        status=excluded.status,meta_description=excluded.meta_description,
-        image_url=COALESCE(excluded.image_url,articles.image_url),image_alt=COALESCE(excluded.image_alt,articles.image_alt),
-        image_credit=COALESCE(excluded.image_credit,articles.image_credit),image_credit_url=COALESCE(excluded.image_credit_url,articles.image_credit_url),
-        image_license=COALESCE(excluded.image_license,articles.image_license),sources_json=excluded.sources_json,
-        published_at=COALESCE(articles.published_at,excluded.published_at)');
+  $imgLicense = $img['license'] ?? $a['image_license'] ?? 'Editorial Use';
+  $pub = $status === 'published' ? date('Y-m-d H:i:s', !empty($a['published_at']) && strtotime($a['published_at']) ? strtotime($a['published_at']) : time()) : null;
+  $meta = mb_substr((string)($a['meta_description'] ?? ($a['excerpt'] ?? $title)), 0, 300);
+  $excerpt = mb_substr((string)($a['excerpt'] ?? ($a['summary'] ?? $title)), 0, 600);
+  $sources = json_encode(array_values(array_filter($a['sources'] ?? [], fn($s) => is_array($s) && safe_url($s['url'] ?? ''))));
+
+  // Check if article already exists by slug
+  $existSt = $pdo->prepare("SELECT id FROM articles WHERE slug=?");
+  $existSt->execute([$slug]);
+  $existingId = $existSt->fetchColumn();
+
+  if ($existingId) {
+    $up = $pdo->prepare("UPDATE articles SET 
+      title = :title,
+      excerpt = :excerpt,
+      content = :content,
+      category = :cat,
+      status = :status,
+      meta_description = :meta,
+      image_url = COALESCE(:iu, image_url),
+      image_alt = COALESCE(:ia, image_alt),
+      image_credit = COALESCE(:ic, image_credit),
+      image_credit_url = COALESCE(:icu, image_credit_url),
+      image_license = COALESCE(:il, image_license),
+      sources_json = :src,
+      published_at = COALESCE(published_at, :pub),
+      updated_at = CURRENT_TIMESTAMP
+      WHERE id = :id");
+    $up->execute([
+      ':title' => mb_substr($title, 0, 300),
+      ':excerpt' => $excerpt,
+      ':content' => $content,
+      ':cat' => $cat,
+      ':status' => $status,
+      ':meta' => $meta,
+      ':iu' => $imgUrl ?: null,
+      ':ia' => $imgAlt,
+      ':ic' => $imgCredit,
+      ':icu' => $imgCreditUrl ?: null,
+      ':il' => $imgLicense,
+      ':src' => $sources,
+      ':pub' => $pub,
+      ':id' => $existingId
+    ]);
+    return (int)$existingId;
   } else {
-    $st = $pdo->prepare('INSERT INTO articles (slug,title,excerpt,content,category,status,meta_description,image_url,image_alt,image_credit,image_credit_url,image_license,sources_json,published_at)
-      VALUES (:slug,:title,:excerpt,:content,:cat,:status,:meta,:iu,:ia,:ic,:icu,:il,:src,:pub)
-      ON DUPLICATE KEY UPDATE title=VALUES(title),excerpt=VALUES(excerpt),content=VALUES(content),category=VALUES(category),
-        status=VALUES(status),meta_description=VALUES(meta_description),
-        image_url=COALESCE(VALUES(image_url),image_url),image_alt=COALESCE(VALUES(image_alt),image_alt),
-        image_credit=COALESCE(VALUES(image_credit),image_credit),image_credit_url=COALESCE(VALUES(image_credit_url),image_credit_url),
-        image_license=COALESCE(VALUES(image_license),image_license),sources_json=VALUES(sources_json),
-        published_at=COALESCE(published_at,VALUES(published_at))');
+    $ins = $pdo->prepare("INSERT INTO articles 
+      (slug, title, excerpt, content, category, status, meta_description, image_url, image_alt, image_credit, image_credit_url, image_license, sources_json, published_at)
+      VALUES 
+      (:slug, :title, :excerpt, :content, :cat, :status, :meta, :iu, :ia, :ic, :icu, :il, :src, :pub)");
+    $ins->execute([
+      ':slug' => $slug,
+      ':title' => mb_substr($title, 0, 300),
+      ':excerpt' => $excerpt,
+      ':content' => $content,
+      ':cat' => $cat,
+      ':status' => $status,
+      ':meta' => $meta,
+      ':iu' => $imgUrl ?: null,
+      ':ia' => $imgAlt,
+      ':ic' => $imgCredit,
+      ':icu' => $imgCreditUrl ?: null,
+      ':il' => $imgLicense,
+      ':src' => $sources,
+      ':pub' => $pub,
+    ]);
+    return (int)$pdo->lastInsertId();
   }
-  $st->execute([
-    ':slug' => $slug, ':title' => mb_substr($title, 0, 300), ':excerpt' => mb_substr((string)($a['excerpt'] ?? ''), 0, 600),
-    ':content' => $content, ':cat' => $cat, ':status' => $status, ':meta' => mb_substr((string)($a['meta_description'] ?? ''), 0, 300),
-    ':iu' => $imgUrl ?: null, ':ia' => $imgAlt, ':ic' => $imgCredit,
-    ':icu' => $imgCreditUrl ?: null, ':il' => $imgLicense,
-    ':src' => json_encode(array_values(array_filter($a['sources'] ?? [], fn($s) => is_array($s) && safe_url($s['url'] ?? '')))),
-    ':pub' => $pub,
-  ]);
-  return (int)$pdo->query("SELECT id FROM articles WHERE slug=" . $pdo->quote($slug))->fetchColumn();
 }
 }
 
@@ -73,15 +128,15 @@ function run_sync(): array {
     $ch = curl_init(NEXUS_FEED_URL);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 8);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $raw = curl_exec($ch);
-    curl_close($ch);
+    $raw = @curl_exec($ch);
+    @curl_close($ch);
   }
   if ($raw === false || $raw === '') {
     $ctx = stream_context_create(['http' => [
       'method' => 'GET',
-      'timeout' => 12,
+      'timeout' => 6,
       'ignore_errors' => true,
       'header' => implode("\r\n", $headers) . "\r\n"
     ]]);
@@ -90,7 +145,7 @@ function run_sync(): array {
 
   $result = ['synced' => 0, 'error' => null];
   if ($raw === false || $raw === '') {
-    $result['error'] = 'feed unreachable from host';
+    $result['error'] = 'feed unreachable from host (free hosting outgoing connection block)';
   } else {
     $data = json_decode($raw, true);
     if (!is_array($data) || !isset($data['items'])) {

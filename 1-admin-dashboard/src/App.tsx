@@ -79,6 +79,11 @@ export default function App() {
   >('ALL');
   const [articles, setArticles] = useState<ArticleRecord[]>(INITIAL_ARTICLES);
 
+  // Scroll to top on active page transition
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+  }, [activePage]);
+
   // Sync real articles from live backend on startup
   useEffect(() => {
     nexusApi

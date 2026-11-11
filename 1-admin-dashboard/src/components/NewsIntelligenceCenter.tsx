@@ -655,6 +655,27 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
   const [publishingDirectId, setPublishingDirectId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'latest' | 'score'>('latest');
+  const [isNichesOpen, setIsNichesOpen] = useState(false);
+  const [targetBlogUrl, setTargetBlogUrl] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('nexus_blog_url');
+      if (saved) return saved;
+      return window.location.origin;
+    }
+    return 'http://nexusnews.site.je';
+  });
+
+  const handleUpdateBlogUrl = (url: string) => {
+    setTargetBlogUrl(url);
+    try {
+      localStorage.setItem('nexus_blog_url', url);
+    } catch {}
+  };
+
+  // Scroll smoothly to top on tab switch
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+  }, [activeTab]);
 
   const backendDiag = nexusApi.getDiagnostics();
 
@@ -900,7 +921,7 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
         const articleSlug =
           data.slug || headline.toLowerCase().replace(/[^a-z0-9]+/g, '-');
         const fullBody = data.body_markdown || headline;
-        const categorySlug = target?.categorySlug || 'technology';
+        const categorySlug = target?.categorySlug || 'ai-technology';
         
         // Smart fallback image based on niche category if pipeline image missing
         const fallbackImgs: Record<string, string> = {
@@ -922,22 +943,56 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
           license: wireImgUrl ? 'Editorial Use' : (rawImg?.license || 'CC BY-SA 4.0'),
         };
 
+        const catMap: Record<string, string> = {
+          'science-space': 'science',
+          'ai-technology': 'technology',
+          'business-finance': 'business',
+          'world-trending-news': 'world',
+        };
+        const blogCat = catMap[categorySlug] || 'technology';
+
+        const publishPayload = {
+          title: data.headline || headline,
+          slug: articleSlug,
+          content: fullBody,
+          excerpt: data.summary || fullBody.slice(0, 250),
+          category: blogCat,
+          status: 'published',
+          image: articleImg,
+          sources: [
+            {
+              title: target?.relatedSources[0]?.sourceName || 'Primary Wire Source',
+              url: target?.canonicalUrl || 'https://www.bbc.com/news',
+            },
+          ],
+        };
+
         // Push directly to local blog via browser to bypass InfinityFree outbound restrictions
+        let pubSuccess = false;
         try {
-          await fetch('/api/publish_direct.php', {
+          const pRes = await fetch('/api/publish_direct.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: data.headline || headline,
-              slug: articleSlug,
-              content: fullBody,
-              excerpt: fullBody.slice(0, 250),
-              category: target?.categorySlug || 'technology',
-              status: 'published',
-              image: articleImg,
-            }),
+            credentials: 'same-origin',
+            body: JSON.stringify(publishPayload),
           });
+          if (pRes.ok) {
+            const pData = await pRes.json().catch(() => null);
+            if (pData?.ok) pubSuccess = true;
+          }
         } catch {}
+
+        // If targetBlogUrl is configured and points elsewhere, also sync there
+        const cleanBlogUrl = targetBlogUrl.replace(/\/+$/, '');
+        if (cleanBlogUrl && cleanBlogUrl !== window.location.origin) {
+          try {
+            await fetch(`${cleanBlogUrl}/api/publish_direct.php`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(publishPayload),
+            });
+          } catch {}
+        }
 
         setPublishedArticle({
           storyId,
@@ -948,9 +1003,8 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
           imageUrl: bestImgUrl,
         });
 
-        const blogOrigin = window.location.origin;
         setActionBanner(
-          `🎉 Article published! "${data.headline || headline}" (Quality: ${data.quality_score ?? 95}/100). Visit your live blog: ${blogOrigin}/`
+          `🎉 Article published! "${data.headline || headline}" (Quality: ${data.quality_score ?? 95}/100). Live link: ${cleanBlogUrl}/article/${articleSlug}`
         );
       } else {
         setActionBanner(
@@ -995,48 +1049,100 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
 
     const fullContent = `${target.shortMetadataDescription}\n\nPrimary reporting corroboration via [${target.relatedSources[0]?.sourceName || 'Wire Source'}](${target.canonicalUrl || 'https://www.bbc.com/news'}). Further technical telemetry and market updates are continuously tracked through the multi-wire intelligence ingestion pipeline.`;
 
+    const catMap: Record<string, string> = {
+      'science-space': 'science',
+      'ai-technology': 'technology',
+      'business-finance': 'business',
+      'world-trending-news': 'world',
+    };
+    const blogCat = catMap[target.categorySlug] || 'technology';
+
+    const publishPayload = {
+      title: headline,
+      slug: articleSlug,
+      content: fullContent,
+      excerpt: target.shortMetadataDescription,
+      category: blogCat,
+      status: 'published',
+      image: articleImg,
+      sources: [
+        {
+          title: target.relatedSources[0]?.sourceName || 'Primary Wire Source',
+          url: target.canonicalUrl || 'https://www.bbc.com/news',
+        },
+      ],
+    };
+
+    let directSuccess = false;
+    let directError = '';
+
+    // 1. Direct browser sync to PHP Blog on same domain
     try {
-      await fetch('/api/publish_direct.php', {
+      const res = await fetch('/api/publish_direct.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: headline,
-          slug: articleSlug,
-          content: fullContent,
-          excerpt: target.shortMetadataDescription,
-          category: target.categorySlug || 'world-trending-news',
-          status: 'published',
-          image: articleImg,
-          sources: [
-            {
-              title: target.relatedSources[0]?.sourceName || 'Primary Wire Source',
-              url: target.canonicalUrl || 'https://www.bbc.com/news',
-            },
-          ],
-        }),
+        credentials: 'same-origin',
+        body: JSON.stringify(publishPayload),
       });
-
-      setPublishedArticle({
-        storyId,
-        headline,
-        bodyMarkdown: fullContent,
-        qualityScore: 96,
-        slug: articleSlug,
-        imageUrl: finalImgUrl,
-      });
-
-      setSelectedClusterId(storyId);
-
-      const blogOrigin = window.location.origin;
-      setActionBanner(
-        `🎉 Successfully published to blog web! Article: "${headline}". Visit ${blogOrigin}/article/${articleSlug}`
-      );
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Publish error';
-      setActionBanner(`Publish error: ${msg}`);
-    } finally {
-      setPublishingDirectId(null);
+      const resData = await res.json().catch(() => null);
+      if (res.ok && resData?.ok) {
+        directSuccess = true;
+      } else {
+        directError = resData?.error || `HTTP ${res.status}`;
+      }
+    } catch (e: any) {
+      directError = e?.message || 'Network error';
     }
+
+    // 2. If targetBlogUrl is specified and different, also publish there
+    const cleanBlogUrl = targetBlogUrl.replace(/\/+$/, '');
+    if (cleanBlogUrl && cleanBlogUrl !== window.location.origin) {
+      try {
+        const extRes = await fetch(`${cleanBlogUrl}/api/publish_direct.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(publishPayload),
+        });
+        const extData = await extRes.json().catch(() => null);
+        if (extRes.ok && extData?.ok) {
+          directSuccess = true;
+        }
+      } catch {}
+    }
+
+    // 3. Persist to Render FastAPI Supabase database
+    try {
+      await nexusApi.createArticle({
+        headline,
+        category: blogCat,
+        body: fullContent,
+        primarySourceUrl: target.canonicalUrl || target.relatedSources[0]?.url || 'https://www.bbc.com/news',
+        wordCount: fullContent.split(/\s+/).length,
+        seoScore: 96,
+      });
+    } catch {}
+
+    setPublishedArticle({
+      storyId,
+      headline,
+      bodyMarkdown: fullContent,
+      qualityScore: 96,
+      slug: articleSlug,
+      imageUrl: finalImgUrl,
+    });
+
+    setSelectedClusterId(storyId);
+
+    if (directSuccess) {
+      setActionBanner(
+        `🎉 Successfully published to blog web! Article: "${headline}". Check live: ${cleanBlogUrl}/article/${articleSlug}`
+      );
+    } else {
+      setActionBanner(
+        `⚠️ Saved to global articles repository! Direct blog note: ${directError || 'Uploaded to database'}. Live article: ${cleanBlogUrl}/article/${articleSlug}`
+      );
+    }
+    setPublishingDirectId(null);
   };
 
   const handleTriggerCollectionScan = async () => {
@@ -1237,70 +1343,81 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
       {/* TAB 1: TRENDING NEWS & SUPPORTED NEWS NICHES */}
       {activeTab === 'trending' && (
         <div className="space-y-6">
-          {/* 4 Supported News Niches Control Bar */}
-          <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-200 dark:border-slate-800">
-              <div>
-                <h3 className="font-display font-semibold text-sm text-slate-900 dark:text-white">
-                  Supported News Niches (Admin Category Controls)
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          {/* Supported News Niches Control Bar (Collapsible for compact view) */}
+          <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-3 sm:p-4 transition-all">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs flex-wrap">
+                <span className="font-display font-semibold text-slate-900 dark:text-white">
+                  Supported News Niches
+                </span>
+                <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  {categories.filter((c) => c.isEnabled).length} of 4 Niches Enabled (Business, World, AI &amp; Tech, Science)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNichesOpen(!isNichesOpen)}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors self-start sm:self-auto"
+              >
+                <span>{isNichesOpen ? 'Hide Category Controls ▲' : 'Configure Niches ▾'}</span>
+              </button>
+            </div>
+
+            {isNichesOpen && (
+              <div className="pt-3 mt-3 border-t border-slate-200 dark:border-slate-800">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
                   Enable or disable primary editorial niches and inspect configured classification keywords, topics, regions, and languages.
                 </p>
-              </div>
-              <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
-                {categories.filter((c) => c.isEnabled).length} of 4 Niches Enabled
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-4">
-              {categories.map((cat) => (
-                <div
-                  key={cat.id}
-                  className={`rounded-xl p-4 border transition-colors ${
-                    cat.isEnabled
-                      ? 'bg-slate-50/70 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800'
-                      : 'bg-slate-100/50 dark:bg-slate-950/40 border-slate-200/50 dark:border-slate-800/40 opacity-60'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-display font-semibold text-xs sm:text-sm text-slate-900 dark:text-white">
-                        {cat.name}
-                      </div>
-                      <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
-                        {cat.sectorGroup} ·Lang: {cat.languages.join(', ')}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleCategory(cat.slug)}
-                      className={`px-2.5 py-1 rounded text-[11px] font-mono font-medium transition-colors ${
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                  {categories.map((cat) => (
+                    <div
+                      key={cat.id}
+                      className={`rounded-xl p-4 border transition-colors ${
                         cat.isEnabled
-                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
-                          : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          ? 'bg-slate-50/70 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800'
+                          : 'bg-slate-100/50 dark:bg-slate-950/40 border-slate-200/50 dark:border-slate-800/40 opacity-60'
                       }`}
                     >
-                      {cat.isEnabled ? 'ENABLED' : 'DISABLED'}
-                    </button>
-                  </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-display font-semibold text-xs sm:text-sm text-slate-900 dark:text-white">
+                            {cat.name}
+                          </div>
+                          <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                            {cat.sectorGroup} ·Lang: {cat.languages.join(', ')}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleCategory(cat.slug)}
+                          className={`px-2.5 py-1 rounded text-[11px] font-mono font-medium transition-colors ${
+                            cat.isEnabled
+                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                              : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          {cat.isEnabled ? 'ENABLED' : 'DISABLED'}
+                        </button>
+                      </div>
 
-                  <div className="mt-3 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-                    <div className="truncate">
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">Keywords: </span>
-                      {cat.keywords.slice(0, 5).join(', ')}
+                      <div className="mt-3 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+                        <div className="truncate">
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">Keywords: </span>
+                          {cat.keywords.slice(0, 5).join(', ')}
+                        </div>
+                        <div className="truncate">
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">Regions: </span>
+                          {cat.regions.join(', ')}
+                        </div>
+                      </div>
                     </div>
-                    <div className="truncate">
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">Regions: </span>
-                      {cat.regions.join(', ')}
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
 
-          {/* Filter Bar */}
+          {/* Filter Bar & Target Blog Web URL Bar */}
           <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
@@ -1311,7 +1428,7 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search headlines, metadata, or tags..."
                   aria-label="Search trending stories"
-                  className="pl-8 pr-3 py-1.5 rounded-lg text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 w-64"
+                  className="pl-8 pr-3 py-1.5 rounded-lg text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 w-56 sm:w-64"
                 />
               </div>
 
@@ -1335,8 +1452,8 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
                 onChange={(e) => setMinTrendScoreFilter(Number(e.target.value))}
                 className="px-3 py-1.5 rounded-lg text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100"
               >
-                <option value={0}>All Trend Scores (0–100)</option>
-                <option value={80}>High Priority Only (80–100)</option>
+                <option value={0}>All Scores (0–100)</option>
+                <option value={80}>High Priority (80–100)</option>
                 <option value={60}>Normal &amp; High (60–100)</option>
                 <option value={40}>Low &amp; Above (40–100)</option>
               </select>
@@ -1352,18 +1469,26 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
               </select>
             </div>
 
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-                Showing {filteredClusters.length} wire stories
-              </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 text-xs">
+                <span className="text-slate-500 font-mono text-[11px]">Blog:</span>
+                <input
+                  type="text"
+                  value={targetBlogUrl}
+                  onChange={(e) => handleUpdateBlogUrl(e.target.value)}
+                  placeholder="http://vibeshopbd.lovestoblog.com"
+                  className="bg-transparent border-0 text-slate-800 dark:text-slate-200 font-mono text-[11px] w-40 sm:w-48 focus:outline-none"
+                  title="Target Blog Web URL where articles are published"
+                />
+              </div>
               <a
-                href="/"
+                href={targetBlogUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-colors"
                 title="Open your public live blog in a new tab"
               >
-                <span>🌐 Visit Live Blog</span>
+                <span>🌐 Visit Blog</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
@@ -1371,7 +1496,7 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
 
           {/* Master-Detail Trending Story List & Breakdown Inspector */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-7 space-y-3 lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto pr-1.5 custom-scrollbar">
+            <div className="lg:col-span-7 space-y-3 pr-1.5">
               {filteredClusters.length === 0 ? (
                 <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 p-8 text-center space-y-3">
                   <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto">
@@ -1524,7 +1649,7 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
             {/* Story Details & Weighted Breakdown Panel */}
             <div className="lg:col-span-5">
               {activeCluster ? (
-                <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5 space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto custom-scrollbar shadow-lg">
+                <div className="rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800/90 p-5 space-y-4 lg:sticky lg:top-4 max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar shadow-lg">
                   <div className="border-b border-slate-200 dark:border-slate-800 pb-3 space-y-2">
                     <div className="flex items-center justify-between gap-2 text-xs font-mono text-slate-500">
                       <span>{activeCluster.storyId}</span>
@@ -1598,23 +1723,23 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
                   {/* Published Article Inline Preview */}
                   {publishedArticle && publishedArticle.storyId === activeCluster.storyId && (
                     <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs space-y-3">
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
                           <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                           <span>Article &amp; Image Published! (Score: {publishedArticle.qualityScore}/100)</span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <a
-                            href={`/article/${publishedArticle.slug}`}
+                            href={`${targetBlogUrl.replace(/\/+$/, '')}/article/${publishedArticle.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] inline-flex items-center gap-1"
+                            className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] inline-flex items-center gap-1 shadow-sm"
                           >
                             <span>Open on Blog</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
                           <a
-                            href="/"
+                            href={targetBlogUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-[11px] inline-flex items-center gap-1"
@@ -1624,6 +1749,11 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
                           </a>
                         </div>
                       </div>
+
+                      <div className="p-2 rounded bg-slate-900/60 font-mono text-[11px] text-emerald-300 break-all select-all">
+                        {`${targetBlogUrl.replace(/\/+$/, '')}/article/${publishedArticle.slug}`}
+                      </div>
+
                       {publishedArticle.imageUrl && (
                         <div className="rounded-lg overflow-hidden border border-emerald-500/20 max-h-40">
                           <img

@@ -7,12 +7,13 @@
 <script>
 (async function() {
   try {
-    const res = await fetch('https://nexsas-c3ne.onrender.com/api/articles?stage=Published&limit=10');
+    const res = await fetch('https://nexsas-c3ne.onrender.com/api/articles?limit=20');
     if (!res.ok) return;
     const data = await res.json();
     const items = data.items || [];
-    let syncedAny = false;
+    let syncedCount = 0;
     for (const art of items) {
+      if (art.status !== 'published') continue;
       try {
         const syncRes = await fetch('/api/publish_direct.php', {
           method: 'POST',
@@ -27,12 +28,18 @@
             image: art.image || null,
           })
         });
-        if (syncRes.ok) syncedAny = true;
+        if (syncRes.ok) {
+          const sJson = await syncRes.json().catch(() => null);
+          if (sJson && sJson.ok) syncedCount++;
+        }
       } catch (innerErr) {}
     }
-    if (syncedAny && !sessionStorage.getItem('nexus_auto_synced')) {
-      sessionStorage.setItem('nexus_auto_synced', '1');
-      setTimeout(() => location.reload(), 500);
+    if (syncedCount > 0) {
+      const syncKey = 'nexus_sync_v_' + items.map(i => i.slug).join('_');
+      if (!sessionStorage.getItem(syncKey)) {
+        sessionStorage.setItem(syncKey, '1');
+        setTimeout(() => location.reload(), 500);
+      }
     }
   } catch (e) {}
 })();
