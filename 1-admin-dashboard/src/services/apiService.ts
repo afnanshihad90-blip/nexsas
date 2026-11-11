@@ -987,6 +987,7 @@ class NexusApiService {
     customHeadline?: string,
     publishingMode?: string,
     customImageUrl?: string,
+    sourceUrl?: string,
     bearerToken?: string
   ) {
     const token = bearerToken || this.getToken() || undefined;
@@ -994,9 +995,29 @@ class NexusApiService {
     if (customHeadline) params.set('custom_headline', customHeadline);
     if (publishingMode) params.set('publishing_mode', publishingMode);
     if (customImageUrl) params.set('image_url', customImageUrl);
+    if (sourceUrl) params.set('source_url', sourceUrl);
     const qs = params.toString() ? `?${params.toString()}` : '';
     return this.requestJson(`/api/articles/pipeline/run${qs}`, {
       method: 'POST',
+      bearerToken: token,
+    });
+  }
+
+  // 10. Deep Scrape & Rich Media Publishing
+  public async scrapeAndPublishArticle(
+    payload: {
+      headline: string;
+      source_url: string;
+      category?: string;
+      image_url?: string;
+      mode?: 'instant' | 'ai_rewrite';
+    },
+    bearerToken?: string
+  ) {
+    const token = bearerToken || this.getToken() || undefined;
+    return this.requestJson('/api/articles/scrape-and-publish', {
+      method: 'POST',
+      body: payload,
       bearerToken: token,
     });
   }

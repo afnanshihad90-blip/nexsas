@@ -76,3 +76,17 @@ def require_roles(allowed_roles: Iterable[str]) -> Callable[[AuthenticatedPrinci
 require_admin = require_roles(ADMIN_ROLES)
 require_operator_or_admin = require_roles(OPERATOR_ROLES)
 require_editor_or_admin = require_roles(EDITORIAL_ROLES)
+
+
+def get_optional_principal(
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+    settings: AppSettings = Depends(get_settings),
+) -> Optional[AuthenticatedPrincipal]:
+    """Extracts principal if valid Authorization header present, else None without aborting."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization[len("Bearer ") :].strip()
+    try:
+        return decode_and_verify_access_token(token, settings=settings)
+    except Exception:
+        return None

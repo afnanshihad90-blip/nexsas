@@ -143,6 +143,16 @@
         for (var p = 0; p < paragraphs.length; p++) {
           var text = paragraphs[p].trim();
           if (!text) continue;
+          var ytMatch = text.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
+          if (ytMatch && (text.length < 120 || text.indexOf('http') === 0)) {
+            bodyHtml += '<div class="video-container" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:28px 0;border-radius:10px;background:#000;"><iframe src="https://www.youtube.com/embed/' + ytMatch[1] + '" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allowfullscreen loading="lazy"></iframe></div>\n';
+            continue;
+          }
+          var imgMatch = text.match(/^!\[(.*?)\]\((https?:\/\/[^\s)]+)\)$/);
+          if (imgMatch) {
+            bodyHtml += '<figure class="article-image" style="margin:28px 0;text-align:center;"><img src="' + imgMatch[2] + '" alt="' + imgMatch[1] + '" loading="lazy" style="max-width:100%;height:auto;border-radius:8px;display:inline-block;"><figcaption class="small" style="margin-top:6px;color:#94a3b8;font-size:0.85em;">' + imgMatch[1] + '</figcaption></figure>\n';
+            continue;
+          }
           if (text.indexOf('# ') === 0) {
             bodyHtml += '<h1>' + text.substring(2) + '</h1>\n';
           } else if (text.indexOf('## ') === 0) {

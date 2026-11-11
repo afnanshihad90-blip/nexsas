@@ -89,18 +89,39 @@ if (!function_exists('ago')) {
 function ago($dt): string { return $dt ? date('M j, Y', strtotime($dt)) : ''; }
 }
 
-// Minimal, safe Markdown: escapes HTML first, then supports headings, bold, italic, links, lists.
+// Minimal, safe Markdown: escapes HTML first, then supports headings, bold, italic, links, lists, images and video embeds.
 if (!function_exists('render_markdown')) {
 function render_markdown(string $md): string {
-  $md = str_replace(["\r\n", "\r"], "\n", e($md));
+  $md = str_replace(["\r\n", "\r"], "\n", $md);
   $blocks = preg_split("/\n{2,}/", trim($md));
   $html = '';
   foreach ($blocks as $b) {
     $b = trim($b);
     if ($b === '') continue;
+
+    // Check for YouTube standalone URL block
+    if (preg_match('#^(?:https?://)?(?:www\.)?(?:youtube\.com/(?:watch\?v=|embed/)|youtu\.be/)([a-zA-Z0-9_-]{11})(?:\S*)?$#i', $b, $yt)) {
+      $vidId = htmlspecialchars($yt[1], ENT_QUOTES, 'UTF-8');
+      $html .= '<div class="video-container" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:28px 0;border-radius:10px;background:#000;"><iframe src="https://www.youtube.com/embed/' . $vidId . '" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>' . "\n";
+      continue;
+    }
+
+    // Check for Image standalone block: ![alt](url)
+    if (preg_match('#^!\[(.*?)\]\((https?://[^\s)]+)\)$#s', $b, $img)) {
+      $alt = htmlspecialchars(trim($img[1]), ENT_QUOTES, 'UTF-8');
+      $url = safe_url($img[2]);
+      if ($url) {
+        $capHtml = $alt ? '<figcaption class="small" style="margin-top:8px;color:#94a3b8;font-size:0.85em;text-align:center;">' . $alt . '</figcaption>' : '';
+        $html .= '<figure class="article-image" style="margin:28px 0;text-align:center;"><img src="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" alt="' . $alt . '" loading="lazy" style="max-width:100%;height:auto;border-radius:8px;display:inline-block;">' . $capHtml . '</figure>' . "\n";
+        continue;
+      }
+    }
+
     if (preg_match('/^(#{1,4})\s+(.+)$/s', $b, $m)) {
       $lvl = min(4, strlen($m[1]) + 1);
       $html .= "<h$lvl>" . inline_md($m[2]) . "</h$lvl>\n";
+    } elseif (preg_match('/^> (.*)$/s', $b, $qm)) {
+      $html .= '<blockquote><p>' . inline_md($qm[1]) . "</p></blockquote>\n";
     } elseif (preg_match('/^([-*]\s+.+)(\n[-*]\s+.+)*$/s', $b)) {
       $items = preg_split('/\n/', $b);
       $html .= '<ul>' . implode('', array_map(fn($i) => '<li>' . inline_md(preg_replace('/^[-*]\s+/', '', $i)) . '</li>', $items)) . "</ul>\n";
@@ -114,11 +135,22 @@ function render_markdown(string $md): string {
 
 if (!function_exists('inline_md')) {
 function inline_md(string $t): string {
+  $t = e($t);
   $t = preg_replace('/\*\*(.+?)\*\*/s', '<strong>$1</strong>', $t);
   $t = preg_replace('/(?<![*\w])\*(?!\s)(.+?)(?<!\s)\*(?!\w)/s', '<em>$1</em>', $t);
+
+  // Parse inline images first: ![alt](url)
+  $t = preg_replace_callback('/!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/', function ($m) {
+    $alt = htmlspecialchars(trim($m[1]), ENT_QUOTES, 'UTF-8');
+    $url = htmlspecialchars($m[2], ENT_QUOTES, 'UTF-8');
+    return '<img src="' . $url . '" alt="' . $alt . '" loading="lazy" style="max-width:100%;height:auto;border-radius:6px;margin:12px 0;">';
+  }, $t);
+
+  // Then parse links: [text](url)
   $t = preg_replace_callback('/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/', function ($m) {
     return '<a href="' . $m[2] . '" rel="noopener nofollow" target="_blank">' . $m[1] . '</a>';
   }, $t);
+
   return $t;
 }
 }

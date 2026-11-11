@@ -387,6 +387,32 @@ class ArticleLifecycleResponse(BaseModel):
     timestamp: Any
 
 
+class ScrapeAndPublishRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    headline: str = Field(..., max_length=300)
+    source_url: str = Field(...)
+    category: Optional[str] = Field(default="technology")
+    image_url: Optional[str] = Field(default=None)
+    mode: Optional[str] = Field(default="ai_rewrite")
+
+
+class ScrapeAndPublishResponse(BaseModel):
+    ok: bool = True
+    article_id: Optional[str] = None
+    title: str
+    headline: str
+    slug: str
+    category: str
+    body_markdown: str
+    word_count: int
+    image_url: Optional[str] = None
+    images: List[Dict[str, Any]] = Field(default_factory=list)
+    youtube_ids: List[str] = Field(default_factory=list)
+    primary_source_url: str
+    status: str = "published"
+
+
 # ============================================================================
 # 5. Publishing, Analytics & System Logs Schemas
 # ============================================================================

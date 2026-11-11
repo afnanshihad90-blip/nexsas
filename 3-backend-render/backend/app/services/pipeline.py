@@ -80,6 +80,7 @@ async def run_autonomous_editorial_pipeline(
     custom_sources: Optional[List[Dict[str, Any]]] = None,
     override_mode: Optional[str] = None,
     custom_image_url: Optional[str] = None,
+    source_url: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Executes the full end-to-end autonomous editorial pipeline.
@@ -101,9 +102,28 @@ async def run_autonomous_editorial_pipeline(
     sources = custom_sources or SAMPLE_VERIFIED_NEWS_STORY["sources"]
     idempotency_key = f"pipeline-{uuid.uuid4().hex[:10]}"
 
-    # 3. Media Pre-Sourcing (Original wire image priority, then Wikimedia Commons / Pexels / Unsplash)
-    candidate_images: List[Dict[str, Any]] = []
+    # If source_url provided, scrape real source for statements & photo
     wire_image_url = custom_image_url
+    if source_url:
+        try:
+            from app.intelligence.scraper import scrape_source_article
+            scraped_src = scrape_source_article(source_url)
+            if scraped_src.get("ok"):
+                if scraped_src.get("hero_image") and not wire_image_url:
+                    wire_image_url = scraped_src["hero_image"]
+                if not custom_sources and scraped_src.get("paragraphs"):
+                    sources = [
+                        {
+                            "url": source_url,
+                            "title": headline,
+                            "publisher": "Primary Wire Reporting",
+                            "published_at": datetime.now(timezone.utc).isoformat(),
+                            "reliability_tier": "Tier 1 Wire",
+                            "factual_statements": scraped_src["paragraphs"][:5],
+                        }
+                    ]
+        except Exception as sc_err:
+            logger.info("Pipeline source_url scraping notice: %s", sc_err)
 
     # If custom_image_url was not passed directly, look for it in the News Intelligence Engine
     if not wire_image_url and custom_headline:

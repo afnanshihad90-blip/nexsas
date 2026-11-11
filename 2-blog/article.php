@@ -49,6 +49,11 @@ try {
     } catch (Throwable $t) {}
 
     $html = render_markdown($a['content'] ?? '');
+    // If body begins with the same image as hero image, strip duplicate
+    if (!empty($a['image_url'])) {
+      $imgUrlEsc = preg_quote($a['image_url'], '#');
+      $html = preg_replace('#^<figure[^>]*><img[^>]+src=[\'"]' . $imgUrlEsc . '[\'"][^>]*>.*?</figure>\s*#i', '', $html, 1);
+    }
     $parts = explode("</p>\n", $html, 4);
 
     require __DIR__ . '/includes/header.php';
