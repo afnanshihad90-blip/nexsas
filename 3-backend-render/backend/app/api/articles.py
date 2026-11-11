@@ -258,6 +258,7 @@ async def scrape_and_publish_article(
         youtube_ids=scraped.get("youtube_ids", []),
         primary_source_url=payload.source_url,
         status="published",
+        error=scraped.get("error"),
     )
 
 

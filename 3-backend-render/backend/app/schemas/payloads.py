@@ -411,6 +411,7 @@ class ScrapeAndPublishResponse(BaseModel):
     youtube_ids: List[str] = Field(default_factory=list)
     primary_source_url: str
     status: str = "published"
+    error: Optional[str] = None
 
 
 # ============================================================================

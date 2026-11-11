@@ -42,6 +42,7 @@ def scrape_source_article(url: str) -> Dict[str, Any]:
     }
 
     html = ""
+    fetch_errors = []
     # Try httpx first if available
     try:
         import httpx
@@ -49,7 +50,10 @@ def scrape_source_article(url: str) -> Dict[str, Any]:
             resp = client.get(url)
             if resp.status_code == 200:
                 html = resp.text
+            else:
+                fetch_errors.append(f"httpx status: {resp.status_code}")
     except Exception as h_err:
+        fetch_errors.append(f"httpx exc: {h_err}")
         logger.info("httpx scrape attempt notice: %s", h_err)
 
     if not html:
@@ -68,6 +72,7 @@ def scrape_source_article(url: str) -> Dict[str, Any]:
                 if html:
                     break
             except Exception as exc:
+                fetch_errors.append(f"urllib attempt {attempt} exc: {exc}")
                 if attempt == 1:
                     logger.warning("Failed to fetch source article '%s': %s", url, exc)
 
@@ -230,8 +235,9 @@ def scrape_source_article(url: str) -> Dict[str, Any]:
     paragraphs = [e["text"] for e in extracted_elements if e["type"] == "paragraph"]
 
     return {
-        "ok": True,
+        "ok": bool(html and extracted_elements),
         "url": url,
+        "error": " | ".join(fetch_errors) if fetch_errors and not html else None,
         "elements": extracted_elements,
         "paragraphs": paragraphs,
         "images": images,
