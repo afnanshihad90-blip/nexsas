@@ -660,6 +660,9 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('nexus_blog_url');
       if (saved) return saved;
+      if (window.location.hostname.includes('vibeshopbd') || window.location.hostname === 'localhost') {
+        return 'http://nexusnews.site.je';
+      }
       return window.location.origin;
     }
     return 'http://nexusnews.site.je';
@@ -994,6 +997,23 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
           } catch {}
         }
 
+        // Also ensure it is persisted to Render Supabase database as Published with Image
+        try {
+          await nexusApi.createArticle({
+            title: data.headline || headline,
+            slug: articleSlug,
+            category: blogCat,
+            excerpt: data.summary || fullBody.slice(0, 250),
+            body_markdown: fullBody,
+            primary_source_url: target?.canonicalUrl || target?.relatedSources[0]?.url || 'https://www.bbc.com/news',
+            image_url: bestImgUrl,
+            image_alt: data.headline || headline,
+            status: 'published',
+            stage: 'Published',
+            is_public: true,
+          });
+        } catch {}
+
         setPublishedArticle({
           storyId,
           headline: data.headline || headline,
@@ -1113,12 +1133,17 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
     // 3. Persist to Render FastAPI Supabase database
     try {
       await nexusApi.createArticle({
-        headline,
+        title: headline,
+        slug: articleSlug,
         category: blogCat,
-        body: fullContent,
-        primarySourceUrl: target.canonicalUrl || target.relatedSources[0]?.url || 'https://www.bbc.com/news',
-        wordCount: fullContent.split(/\s+/).length,
-        seoScore: 96,
+        excerpt: target.shortMetadataDescription,
+        body_markdown: fullContent,
+        primary_source_url: target.canonicalUrl || target.relatedSources[0]?.url || 'https://www.bbc.com/news',
+        image_url: finalImgUrl,
+        image_alt: headline,
+        status: 'published',
+        stage: 'Published',
+        is_public: true,
       });
     } catch {}
 

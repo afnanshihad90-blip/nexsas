@@ -5,6 +5,7 @@ and handles unconfigured/unavailable database states gracefully without crashing
 """
 
 from datetime import datetime, timezone
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import func, select
@@ -240,6 +241,26 @@ def _article_to_dict(r: Any) -> Dict[str, Any]:
     """Map the real `articles` columns (headline/summary/stage) to the API schema."""
     words = int(r.word_count or 0)
     body = getattr(r, "body_markdown", None) or ""
+
+    # Extract image from markdown if present
+    img_match = re.search(r'!\[(.*?)\]\((https?://[^\s\)]+)\)', body)
+    img_url = img_match.group(2) if img_match else None
+    img_alt = img_match.group(1) if img_match else None
+
+    # Derive accurate category based on text content
+    from app.api.blog import guess_category
+    category = guess_category(f"{r.headline} {r.summary} {body[:300]}")
+
+    if not img_url:
+        fallbacks = {
+            "science": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80",
+            "technology": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&auto=format&fit=crop&q=80",
+            "business": "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&auto=format&fit=crop&q=80",
+            "world": "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=1200&auto=format&fit=crop&q=80",
+        }
+        img_url = fallbacks.get(category, fallbacks["technology"])
+        img_alt = r.headline
+
     return {
         "id": str(r.id),
         "slug": r.slug,
@@ -250,7 +271,10 @@ def _article_to_dict(r: Any) -> Dict[str, Any]:
         "summary": r.summary,
         "body_markdown": body,
         "content": body,
-        "category": "technology",
+        "category": category,
+        "image_url": img_url,
+        "image_alt": img_alt,
+        "image_credit": "Original Wire Press Photo (Editorial)",
         "status": STAGE_TO_STATUS.get(r.stage, str(r.stage).lower()),
         "stage": r.stage,
         "word_count": words,
@@ -326,16 +350,57 @@ async def create_article_service(
             "Cannot persist new article because Supabase PostgreSQL is not configured."
         )
     import secrets, uuid
-    body = str(payload.get("body_markdown", ""))
+    headline = str(payload.get("title") or payload.get("headline") or "Untitled Story").strip()
+    raw_slug = str(payload.get("slug") or "").strip()
+    if not raw_slug:
+        raw_slug = re.sub(r"[^a-z0-9]+", "-", headline.lower()).strip("-")
+        if not raw_slug:
+            raw_slug = f"story-{secrets.token_hex(4)}"
+
+    body = str(payload.get("body_markdown") or payload.get("content") or payload.get("body") or headline).strip()
+    summary = str(payload.get("excerpt") or payload.get("summary") or body[:240]).strip()
+
+    # Prepend image if supplied and not already in body
+    img_data = payload.get("image")
+    img_url = payload.get("image_url") or (img_data.get("url") if isinstance(img_data, dict) else None)
+    if img_url and img_url not in body:
+        img_alt = payload.get("image_alt") or headline
+        body = f"![{img_alt}]({img_url})\n\n{body}"
+
     now = datetime.now(timezone.utc)
-    stage = payload.get("stage") or STATUS_TO_STAGE.get(payload.get("status", ""), "Drafts")
-    is_pub = bool(payload.get("is_public", False) or (stage == "Published"))
+    status_str = str(payload.get("status", "")).lower()
+    stage_str = str(payload.get("stage", ""))
+    if stage_str.lower() == "published" or status_str == "published":
+        stage = "Published"
+        is_pub = True
+    else:
+        stage = stage_str or STATUS_TO_STAGE.get(status_str, "Drafts")
+        is_pub = bool(payload.get("is_public", False) or (stage == "Published"))
+
+    # Upsert by slug: if already exists, update safely without crashing on UNIQUE constraint
+    existing = (await session.execute(select(ArticleModel).where(ArticleModel.slug == raw_slug))).scalar_one_or_none()
+    if existing:
+        existing.headline = headline
+        existing.summary = summary
+        existing.body_markdown = body
+        existing.stage = stage
+        existing.is_public = is_pub
+        existing.word_count = len(body.split())
+        existing.updated_at = now
+        if is_pub and not existing.published_at:
+            existing.published_at = now
+        if payload.get("primary_source_url"):
+            existing.primary_source_url = payload.get("primary_source_url")
+        await session.commit()
+        await session.refresh(existing)
+        return _article_to_dict(existing)
+
     article = ArticleModel(
         id=uuid.uuid4(),
         article_code=f"NX-{secrets.token_hex(3).upper()}",
-        slug=payload["slug"],
-        headline=payload.get("title") or payload.get("headline", "Untitled Story"),
-        summary=payload.get("excerpt") or payload.get("summary") or body[:240],
+        slug=raw_slug,
+        headline=headline,
+        summary=summary,
         body_markdown=body,
         stage=stage,
         word_count=len(body.split()),

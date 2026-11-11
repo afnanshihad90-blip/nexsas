@@ -831,16 +831,30 @@ class NexusApiService {
   public async createArticle(
     payload: {
       title: string;
-      slug: string;
+      slug?: string;
       subtitle?: string;
       excerpt?: string;
       body_markdown: string;
+      category?: string;
+      status?: string;
+      stage?: string;
+      is_public?: boolean;
+      primary_source_url?: string;
+      image_url?: string;
+      image_alt?: string;
     },
     bearerToken?: string
   ) {
+    const cleanSlug = payload.slug || payload.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 100);
     return this.requestJson('/api/articles', {
       method: 'POST',
-      body: payload,
+      body: {
+        ...payload,
+        slug: cleanSlug,
+        stage: payload.stage || 'Published',
+        status: payload.status || 'published',
+        is_public: payload.is_public !== undefined ? payload.is_public : true,
+      },
       bearerToken,
     });
   }

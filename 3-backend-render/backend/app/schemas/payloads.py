@@ -8,9 +8,10 @@ from __future__ import annotations
 from datetime import datetime
 import re
 from typing import Any, Dict, List, Optional
+import uuid
 
 try:
-    from pydantic import BaseModel, Field, field_validator
+    from pydantic import BaseModel, ConfigDict, Field, field_validator
 except ImportError:  # Fallback for environments without pydantic installed
 
     class BaseModel:  # type: ignore[no-redef]
@@ -20,6 +21,9 @@ except ImportError:  # Fallback for environments without pydantic installed
 
         def model_dump(self) -> Dict[str, Any]:
             return dict(self.__dict__)
+
+    def ConfigDict(**kwargs: Any) -> Dict[str, Any]:
+        return kwargs
 
     def Field(default: Any = None, **kwargs: Any) -> Any:  # type: ignore[misc]
         if default is ... and "default_factory" in kwargs:
@@ -304,18 +308,37 @@ SLUG_REGEX = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 class ArticleCreateRequest(BaseModel):
-    title: str = Field(..., min_length=10, max_length=240)
-    slug: str = Field(..., min_length=5, max_length=160)
+    model_config = ConfigDict(extra="allow")
+
+    title: Optional[str] = Field(default=None, max_length=300)
+    headline: Optional[str] = Field(default=None, max_length=300)
+    slug: Optional[str] = Field(default=None, max_length=160)
     subtitle: Optional[str] = Field(default=None, max_length=300)
     excerpt: Optional[str] = Field(default=None, max_length=600)
-    body_markdown: str = Field(..., min_length=50)
+    summary: Optional[str] = Field(default=None, max_length=600)
+    body_markdown: Optional[str] = Field(default=None)
+    content: Optional[str] = Field(default=None)
+    body: Optional[str] = Field(default=None)
+    status: Optional[str] = Field(default="published")
+    stage: Optional[str] = Field(default="Published")
+    is_public: Optional[bool] = Field(default=True)
+    primary_source_url: Optional[str] = Field(default=None)
+    category: Optional[str] = Field(default="technology")
+    image_url: Optional[str] = Field(default=None)
+    image_alt: Optional[str] = Field(default=None)
+    image_credit: Optional[str] = Field(default=None)
 
     @field_validator("slug")
     @classmethod
-    def validate_slug_format(cls, v: str) -> str:
-        if not SLUG_REGEX.match(v):
-            raise ValueError("slug must contain only lowercase alphanumeric characters and hyphens.")
-        return v
+    def validate_slug_format(cls, v: Optional[str]) -> str:
+        if not v:
+            return f"story-{uuid.uuid4().hex[:8]}"
+        clean = v.lower().strip()
+        if not SLUG_REGEX.match(clean):
+            clean = re.sub(r"[^a-z0-9]+", "-", clean).strip("-")
+            if not clean:
+                clean = f"story-{uuid.uuid4().hex[:8]}"
+        return clean[:160]
 
 
 class ArticleItemSchema(BaseModel):
@@ -329,6 +352,9 @@ class ArticleItemSchema(BaseModel):
     body_markdown: Optional[str] = None
     content: Optional[str] = None
     category: Optional[str] = "technology"
+    image_url: Optional[str] = None
+    image_alt: Optional[str] = None
+    image_credit: Optional[str] = None
     status: str
     stage: Optional[str] = None
     word_count: int = 0
