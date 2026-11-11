@@ -999,7 +999,7 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
 
         // Also ensure it is persisted to Render Supabase database as Published with Image
         try {
-          await nexusApi.createArticle({
+          const artRes = await nexusApi.createArticle({
             title: data.headline || headline,
             slug: articleSlug,
             category: blogCat,
@@ -1012,6 +1012,10 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
             stage: 'Published',
             is_public: true,
           });
+          const createdId = (artRes.data as any)?.id;
+          if (createdId) {
+            await nexusApi.publishArticle(createdId).catch(() => {});
+          }
         } catch {}
 
         setPublishedArticle({
@@ -1132,7 +1136,7 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
 
     // 3. Persist to Render FastAPI Supabase database
     try {
-      await nexusApi.createArticle({
+      const artRes = await nexusApi.createArticle({
         title: headline,
         slug: articleSlug,
         category: blogCat,
@@ -1145,6 +1149,10 @@ export const NewsIntelligenceCenter: React.FC<NewsIntelligenceCenterProps> = ({
         stage: 'Published',
         is_public: true,
       });
+      const createdId = (artRes.data as any)?.id;
+      if (createdId) {
+        await nexusApi.publishArticle(createdId).catch(() => {});
+      }
     } catch {}
 
     setPublishedArticle({
